@@ -12,4 +12,5 @@ pub struct FfmpegCommand {
     command_type: CommandType,
     input_file: String,
     output_file: String,
+    codec: String,
 }
