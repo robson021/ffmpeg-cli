@@ -21,9 +21,9 @@ pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, 
 fn find_file_extension(path: &str) -> Option<String> {
     match rfind_utf8(path, '.') {
         Some(position) => {
-            let video_name = &path[position..];
-            debug!("Found video with an extension: {}", video_name);
-            Some(video_name.to_owned())
+            let ext = &path[position..];
+            debug!("Found video with an extension: {}", ext);
+            Some(ext.to_owned())
         }
         None => {
             println!("Found no extension for the given path.");
