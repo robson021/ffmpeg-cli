@@ -10,7 +10,7 @@ pub fn read_input() -> String {
 
 pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, &'static str> {
     match find_file_extension(path) {
-        None => Err("File does have an invalid extension."),
+        None => Err("Input file does have an invalid extension."),
         Some(extension) => {
             let new_path = path.replace(&extension, new_extension);
             Ok(new_path)
