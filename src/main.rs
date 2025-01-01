@@ -1,4 +1,5 @@
 use crate::string_utils::read_input;
+use log::error;
 
 mod command_runner;
 mod ffmpeg_command;
@@ -26,7 +27,7 @@ fn main() {
                 if option == 0 {
                     break;
                 }
-                execute_option(option)
+                handle_menu_option(option)
             }
             Err(_) => println!("Invalid option. A number was expected."),
         }
@@ -34,7 +35,7 @@ fn main() {
     println!("Shutting down.");
 }
 
-fn execute_option(option: i32) {
+fn handle_menu_option(option: i32) {
     let ffmpeg_command = match option {
         1 => transcoder::convert(),
         // todo: add more options
@@ -42,7 +43,7 @@ fn execute_option(option: i32) {
     };
     if ffmpeg_command.is_err() {
         println!(
-            "Error. Could not build ffmpeg command: {}",
+            "Could not build ffmpeg command. Reason:\n{}",
             ffmpeg_command.err().unwrap()
         );
         return;
@@ -50,6 +51,6 @@ fn execute_option(option: i32) {
     let ffmpeg_command = ffmpeg_command.unwrap();
     let result = command_runner::run_command(ffmpeg_command);
     if let Err(code) = result {
-        println!("Error. Process exit with the status: {}", code);
+        error!("Error. Process exit with the status: {}", code);
     };
 }

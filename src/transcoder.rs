@@ -9,13 +9,12 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
     println!("Provide video path (e.g. /aaa/bbb/ccc/video.mp4):");
     let input = read_input();
 
-    println!("Provide output format. The valid formats are:");
-    println!("{:?}", video_check::VALID_VIDEO_FORMATS);
+    println!("Provide output format:");
     let format = read_input();
 
     let valid_extension = video_check::has_valid_extension(&format);
     if !valid_extension {
-        return Err("Invalid extension.");
+        return Err("Invalid format.");
     }
     let format = ".".to_string() + &format;
 
