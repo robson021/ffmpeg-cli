@@ -3,11 +3,10 @@ use crate::ffmpeg_command::{
 };
 use crate::string_utils::read_input;
 use crate::{string_utils, video_check};
-use log::{debug, error};
+use log::debug;
 
 pub fn convert() -> Result<FfmpegCommand, &'static str> {
-    println!("Provide video path (e.g. /aaa/bbb/ccc/video.mp4):");
-    let input = read_input();
+    let input = ask_input_file();
 
     println!("Provide output format:");
     let format = read_input();
@@ -33,7 +32,7 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
         .build();
 
     if cmd.is_err() {
-        error!("{}", cmd.err().unwrap());
+        debug!("{}", cmd.err().unwrap());
         Err("Failed to build convert ffmpeg command.")
     } else {
         Ok(cmd.unwrap())
@@ -41,10 +40,29 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
 }
 
 pub fn compress() -> Result<FfmpegCommand, &'static str> {
+    todo!();
     // ffmpeg -i input.mp4  -vcodec libx265 -crf 28 output.mp4
-    todo!()
+    // $ ffmpeg -i input.mp4 -ac 2 -c:a aac -strict -2 -b:a 128k -c:v libx264 -preset veryslow -crf 24 output.mp4
+    let input = ask_input_file();
+    string_utils::change_file_extension(&input, "_yt.mp4")?;
+
+    let cmd = FfmpegCommandBuilder::default()
+        .command_type(CommandType::Compress)
+        .input_file(input)
+        .output_file("todo")
+        .audio_codec(AudioCodec::default())
+        .video_codec(VideoCodec::Libx264)
+        .build()
+        .unwrap();
+
+    Ok(cmd)
 }
 
 pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
     todo!()
+}
+
+fn ask_input_file() -> String {
+    println!("Provide video path (e.g. /aaa/bbb/ccc/video.mp4):");
+    read_input()
 }

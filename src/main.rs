@@ -1,5 +1,4 @@
 use crate::string_utils::read_input;
-use log::error;
 
 mod command_runner;
 mod ffmpeg_command;
@@ -13,6 +12,7 @@ fn print_menu() {
     println!("1. Convert format (e.g. avi -> mp4).");
     println!("2. Compress using specific codec.");
     println!("3. Complex command.");
+    println!("4. Convert into Youtube optimized format.");
     println!("0. Exit program.");
 }
 
@@ -40,16 +40,16 @@ fn handle_menu_option(option: i32) {
         1 => transcoder::convert(),
         2 => transcoder::compress(),
         3 => transcoder::multi_task(),
-        // todo: add more options
+        4 => todo!(),
         _ => Err("Invalid choice."),
     };
     if ffmpeg_command.is_err() {
-        error!("{}", ffmpeg_command.err().unwrap());
+        eprintln!("Error: {}", ffmpeg_command.err().unwrap());
         return;
     }
     let ffmpeg_command = ffmpeg_command.unwrap();
     let result = command_runner::run_command(ffmpeg_command);
     if let Err(code) = result {
-        error!("Error. Process exit with the status: {}", code);
+        eprintln!("Error. Process exit with the status: {}", code);
     };
 }

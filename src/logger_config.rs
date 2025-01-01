@@ -20,5 +20,10 @@ pub fn setup_logger() {
         .unwrap();
 
     log4rs::init_config(config).unwrap();
-    log::set_max_level(LevelFilter::Debug);
+
+    if cfg!(debug_assertions) {
+        log::set_max_level(LevelFilter::Debug);
+    } else {
+        log::set_max_level(LevelFilter::Info);
+    }
 }

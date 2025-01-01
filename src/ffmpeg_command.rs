@@ -3,6 +3,7 @@ pub enum CommandType {
     #[default]
     Compress,
     ConvertFormat,
+    YoutubeReady,
     MultiTask,
 }
 
@@ -15,6 +16,7 @@ pub enum AudioCodec {
 pub enum VideoCodec {
     #[default]
     H264,
+    Libx264,
 }
 
 trait CodecAsString {
@@ -33,6 +35,7 @@ impl CodecAsString for VideoCodec {
     fn as_string(&self) -> String {
         match self {
             VideoCodec::H264 => "h264".to_owned(),
+            VideoCodec::Libx264 => "libx264".to_owned(),
         }
     }
 }
@@ -47,7 +50,7 @@ pub struct FfmpegCommand {
     video_codec: VideoCodec,
 }
 impl FfmpegCommand {
-    pub fn as_string(&self) -> String {
+    pub fn as_cmd_string(&self) -> String {
         let mut cmd = String::from("ffmpeg");
         cmd.push_str(" -i ");
         cmd.push_str(self.input_file.as_str());
@@ -64,6 +67,9 @@ impl FfmpegCommand {
             CommandType::MultiTask => {
                 todo!()
             }
+            CommandType::YoutubeReady => {
+                todo!()
+            }
         }
         cmd.push(' ');
         cmd.push_str(self.output_file.as_str());
@@ -75,7 +81,7 @@ impl FfmpegCommand {
 mod tests {
     use super::*;
     #[test]
-    fn convert_format_ffmpeg_command() {
+    fn should_convert_format_ffmpeg_command() {
         let command = FfmpegCommandBuilder::default()
             .command_type(CommandType::ConvertFormat)
             .input_file("/aaa/bbb/input_video.mp4")
@@ -84,7 +90,7 @@ mod tests {
             .video_codec(VideoCodec::default())
             .build()
             .unwrap()
-            .as_string();
+            .as_cmd_string();
 
         assert_eq!(
             "ffmpeg -i /aaa/bbb/input_video.mp4 -vcodec h264 -acodec aac /ccc/ddd/output_video.avi",

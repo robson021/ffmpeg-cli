@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::Instant;
 
 pub fn run_command(command: FfmpegCommand) -> Result<(), i32> {
-    let command = command.as_string();
+    let command = command.as_cmd_string();
     println!("Running command: {:?}", command);
     let start = Instant::now();
     let status_code = execute_and_wait(command);
