@@ -38,14 +38,13 @@ fn main() {
 fn handle_menu_option(option: i32) {
     let ffmpeg_command = match option {
         1 => transcoder::convert(),
+        2 => transcoder::compress(),
+        3 => transcoder::multi_task(),
         // todo: add more options
         _ => Err("Invalid choice."),
     };
     if ffmpeg_command.is_err() {
-        println!(
-            "Could not build ffmpeg command. Reason:\n{}",
-            ffmpeg_command.err().unwrap()
-        );
+        error!("{}", ffmpeg_command.err().unwrap());
         return;
     }
     let ffmpeg_command = ffmpeg_command.unwrap();

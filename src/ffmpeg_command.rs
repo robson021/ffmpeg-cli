@@ -70,3 +70,25 @@ impl FfmpegCommand {
         cmd
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn convert_format_ffmpeg_command() {
+        let command = FfmpegCommandBuilder::default()
+            .command_type(CommandType::ConvertFormat)
+            .input_file("/aaa/bbb/input_video.mp4")
+            .output_file("/ccc/ddd/output_video.avi")
+            .audio_codec(AudioCodec::default())
+            .video_codec(VideoCodec::default())
+            .build()
+            .unwrap()
+            .as_string();
+
+        assert_eq!(
+            "ffmpeg -i /aaa/bbb/input_video.mp4 -vcodec h264 -acodec aac /ccc/ddd/output_video.avi",
+            command
+        );
+    }
+}

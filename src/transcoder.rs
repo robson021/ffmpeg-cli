@@ -17,6 +17,9 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
         return Err("Invalid format.");
     }
     let format = ".".to_string() + &format;
+    if input.ends_with(&format) {
+        return Err("Input and output formats are the same.");
+    }
 
     let output = string_utils::change_file_extension(&input, &format)?;
     debug!("Path with changed file extension: {}", output);
@@ -37,11 +40,11 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
     }
 }
 
-fn compress() {
+pub fn compress() -> Result<FfmpegCommand, &'static str> {
     // ffmpeg -i input.mp4  -vcodec libx265 -crf 28 output.mp4
     todo!()
 }
 
-fn multi_task() {
+pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
     todo!()
 }
