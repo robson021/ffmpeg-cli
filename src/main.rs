@@ -1,4 +1,5 @@
 use crate::string_utils::read_input;
+use log::debug;
 
 mod command_runner;
 mod ffmpeg_command;
@@ -40,16 +41,20 @@ fn handle_menu_option(option: i32) {
         1 => transcoder::convert(),
         2 => transcoder::compress(),
         3 => transcoder::multi_task(),
-        4 => todo!(),
+        4 => transcoder::youtube_optimized(),
         _ => Err("Invalid choice."),
     };
-    if ffmpeg_command.is_err() {
-        eprintln!("Error: {}", ffmpeg_command.err().unwrap());
-        return;
+
+    match ffmpeg_command {
+        Ok(cmd) => {
+            let result = command_runner::run_command(&cmd);
+            match result {
+                Ok(_) => {
+                    debug!("Successfully executed command: {}.", cmd.as_cmd_string());
+                }
+                Err(code) => eprintln!("Error. Process exit with the status: {}", code),
+            }
+        }
+        Err(error) => eprintln!("{}", error),
     }
-    let ffmpeg_command = ffmpeg_command.unwrap();
-    let result = command_runner::run_command(ffmpeg_command);
-    if let Err(code) = result {
-        eprintln!("Error. Process exit with the status: {}", code);
-    };
 }

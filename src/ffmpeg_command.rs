@@ -15,11 +15,11 @@ pub enum AudioCodec {
 #[derive(Debug, Clone, Default)]
 pub enum VideoCodec {
     #[default]
-    H264,
     Libx264,
+    H264,
 }
 
-trait CodecAsString {
+pub trait CodecAsString {
     fn as_string(&self) -> String;
 }
 
@@ -71,7 +71,8 @@ impl FfmpegCommand {
                 todo!()
             }
             CommandType::YoutubeOptimized => {
-                todo!()
+                // ffmpeg -i input_video.mp4 -vf "scale=1280:-2" -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 320k output.mp4
+                cmd.push_str(" -crf 23 -preset medium -b:a 320k -qscale 0");
             }
         }
         cmd.push(' ');

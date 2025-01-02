@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::process::Command;
 use std::time::Instant;
 
-pub fn run_command(command: FfmpegCommand) -> Result<(), i32> {
+pub fn run_command(command: &FfmpegCommand) -> Result<(), i32> {
     let command = command.as_cmd_string();
     println!("Running command: {:?}", command);
     let start = Instant::now();
@@ -36,19 +36,14 @@ fn execute_and_wait(command: String) -> i32 {
 }
 
 pub fn get_supported_formats() -> HashSet<String> {
-    let output = get_command_builder()
-        .arg("-c")
-        .arg("ffmpeg -formats")
-        .output()
-        .expect("Failed to list supported ffmpeg formats. Is ffmpeg installed?");
-
-    let std_out = String::from_utf8_lossy(&output.stdout);
-    let lines = std_out.lines().filter(|line| {
-        line.contains(" D ")
-            || line.contains(" E ")
-            || line.contains(" DE ")
-            || line.contains(" ED ")
-    });
+    let lines = execute_cmd_get_lines("ffmpeg -formats")
+        .into_iter()
+        .filter(|line| {
+            line.contains(" D ")
+                || line.contains(" E ")
+                || line.contains(" DE ")
+                || line.contains(" ED ")
+        });
     let mut formats: Vec<String> = Vec::new();
 
     for line in lines {
@@ -60,4 +55,39 @@ pub fn get_supported_formats() -> HashSet<String> {
         formats.push(line.to_owned())
     }
     formats.into_iter().collect()
+}
+
+fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
+    let output = get_command_builder()
+        .arg("-c")
+        .arg(cmd)
+        .output()
+        .expect("Failed to list supported ffmpeg formats. Is ffmpeg installed?");
+
+    let std_out = String::from_utf8_lossy(&output.stdout);
+    let lines = std_out.lines().collect::<Vec<&str>>();
+    lines.into_iter().map(|line| line.to_owned()).collect()
+}
+
+pub enum CodecType {
+    Audio,
+    Video,
+}
+
+pub fn get_codec(file_path: &str, codec_type: CodecType) -> String {
+    let audio_or_video = match codec_type {
+        CodecType::Audio => "a:0",
+        CodecType::Video => "v:0",
+    };
+    let cmd = format!(
+        "ffprobe -v error -select_streams {} -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {}",
+        audio_or_video,
+        file_path
+    );
+    let r = execute_cmd_get_lines(&cmd);
+    let r = r.last();
+    match r {
+        None => "".to_owned(),
+        Some(r) => r.to_owned(),
+    }
 }

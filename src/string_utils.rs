@@ -9,25 +9,21 @@ pub fn read_input() -> String {
 }
 
 pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, &'static str> {
-    match find_file_extension(path) {
-        None => Err("Input file does have an invalid extension."),
-        Some(extension) => {
-            let new_path = path.replace(&extension, new_extension);
-            Ok(new_path)
-        }
-    }
+    let extension = find_file_extension(path)?;
+    let new_path = path.replace(&extension, new_extension);
+    Ok(new_path)
 }
 
-fn find_file_extension(path: &str) -> Option<String> {
+pub fn find_file_extension(path: &str) -> Result<String, &'static str> {
     match last_index_of_char(path, '.') {
         Some(idx) => {
             let ext = &path[idx..];
             debug!("Found video with an extension: {}", ext);
-            Some(ext.to_owned())
+            Ok(ext.to_owned())
         }
         None => {
             debug!("Found no extension for the path: {}", path);
-            None
+            Err("No extension found.")
         }
     }
 }
@@ -58,7 +54,7 @@ mod tests {
         assert_eq!(ext, ".mp4");
 
         let ext = find_file_extension("abcd");
-        assert!(ext.is_none());
+        assert!(ext.is_err());
     }
 
     #[test]
