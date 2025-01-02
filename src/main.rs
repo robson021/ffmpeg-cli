@@ -10,7 +10,7 @@ mod video_check;
 fn print_menu() {
     println!("\nChose an option:");
     println!("1. Convert format (e.g. avi -> mp4).");
-    println!("2. Compress using specific codec.");
+    println!("2. Compress video.");
     println!("3. Complex command.");
     println!("4. Convert into Youtube optimized format.");
     println!("0. Exit program.");

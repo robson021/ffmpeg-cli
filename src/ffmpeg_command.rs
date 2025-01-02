@@ -3,7 +3,7 @@ pub enum CommandType {
     #[default]
     Compress,
     ConvertFormat,
-    YoutubeReady,
+    YoutubeOptimized,
     MultiTask,
 }
 
@@ -53,21 +53,24 @@ impl FfmpegCommand {
     pub fn as_cmd_string(&self) -> String {
         let mut cmd = String::from("ffmpeg");
         cmd.push_str(" -i ");
-        cmd.push_str(self.input_file.as_str());
+        cmd.push_str(&self.input_file);
+
+        let video_codec = self.video_codec.as_string().to_lowercase();
+        let audio_codec = self.audio_codec.as_string().to_lowercase();
+        cmd.push_str(" -c:v ");
+        cmd.push_str(&video_codec);
+        cmd.push_str(" -c:a ");
+        cmd.push_str(&audio_codec);
+
         match self.command_type {
-            CommandType::ConvertFormat => {
-                cmd.push_str(" -vcodec ");
-                cmd.push_str(self.video_codec.as_string().to_lowercase().as_str());
-                cmd.push_str(" -acodec ");
-                cmd.push_str(self.audio_codec.as_string().to_lowercase().as_str());
-            }
+            CommandType::ConvertFormat => {}
             CommandType::Compress => {
-                todo!()
+                cmd.push_str(" -preset veryslow -crf 24");
             }
             CommandType::MultiTask => {
                 todo!()
             }
-            CommandType::YoutubeReady => {
+            CommandType::YoutubeOptimized => {
                 todo!()
             }
         }
@@ -81,8 +84,8 @@ impl FfmpegCommand {
 mod tests {
     use super::*;
     #[test]
-    fn should_convert_format_ffmpeg_command() {
-        let command = FfmpegCommandBuilder::default()
+    fn should_build_convert_format_command() {
+        let cmd = FfmpegCommandBuilder::default()
             .command_type(CommandType::ConvertFormat)
             .input_file("/aaa/bbb/input_video.mp4")
             .output_file("/ccc/ddd/output_video.avi")
@@ -93,8 +96,26 @@ mod tests {
             .as_cmd_string();
 
         assert_eq!(
-            "ffmpeg -i /aaa/bbb/input_video.mp4 -vcodec h264 -acodec aac /ccc/ddd/output_video.avi",
-            command
+            "ffmpeg -i /aaa/bbb/input_video.mp4 -c:v h264 -c:a aac /ccc/ddd/output_video.avi",
+            cmd,
+        );
+    }
+
+    #[test]
+    fn should_build_compress_command() {
+        let cmd = FfmpegCommandBuilder::default()
+            .command_type(CommandType::Compress)
+            .input_file("/aaa/bbb/input_video.avi")
+            .output_file("/ccc/ddd/output_video.avi")
+            .audio_codec(AudioCodec::Aac)
+            .video_codec(VideoCodec::Libx264)
+            .build()
+            .unwrap()
+            .as_cmd_string();
+
+        assert_eq!(
+            "ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -preset veryslow -crf 24 /ccc/ddd/output_video.avi",
+            cmd,
         );
     }
 }

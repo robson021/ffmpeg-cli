@@ -1,5 +1,6 @@
 use crate::ffmpeg_command::{
-    AudioCodec, CommandType, FfmpegCommand, FfmpegCommandBuilder, VideoCodec,
+    AudioCodec, CommandType, FfmpegCommand, FfmpegCommandBuilder, FfmpegCommandBuilderError,
+    VideoCodec,
 };
 use crate::string_utils::read_input;
 use crate::{string_utils, video_check};
@@ -31,31 +32,22 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
         .video_codec(VideoCodec::default())
         .build();
 
-    if cmd.is_err() {
-        debug!("{}", cmd.err().unwrap());
-        Err("Failed to build convert ffmpeg command.")
-    } else {
-        Ok(cmd.unwrap())
-    }
+    build_command(cmd)
 }
 
 pub fn compress() -> Result<FfmpegCommand, &'static str> {
-    todo!();
-    // ffmpeg -i input.mp4  -vcodec libx265 -crf 28 output.mp4
-    // $ ffmpeg -i input.mp4 -ac 2 -c:a aac -strict -2 -b:a 128k -c:v libx264 -preset veryslow -crf 24 output.mp4
     let input = ask_input_file();
-    string_utils::change_file_extension(&input, "_yt.mp4")?;
+    let output = string_utils::change_file_extension(&input, "_compressed.mp4")?;
 
     let cmd = FfmpegCommandBuilder::default()
         .command_type(CommandType::Compress)
         .input_file(input)
-        .output_file("todo")
+        .output_file(output)
         .audio_codec(AudioCodec::default())
         .video_codec(VideoCodec::Libx264)
-        .build()
-        .unwrap();
+        .build();
 
-    Ok(cmd)
+    build_command(cmd)
 }
 
 pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
@@ -65,4 +57,16 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
 fn ask_input_file() -> String {
     println!("Provide video path (e.g. /aaa/bbb/ccc/video.mp4):");
     read_input()
+}
+
+fn build_command(
+    cmd: Result<FfmpegCommand, FfmpegCommandBuilderError>,
+) -> Result<FfmpegCommand, &'static str> {
+    match cmd {
+        Ok(cmd) => Ok(cmd),
+        Err(err) => {
+            debug!("{}", err);
+            Err("Failed to build convert ffmpeg command.")
+        }
+    }
 }
