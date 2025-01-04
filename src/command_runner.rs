@@ -62,7 +62,7 @@ fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
         .arg("-c")
         .arg(cmd)
         .output()
-        .expect("Failed to list supported ffmpeg formats. Is ffmpeg installed?");
+        .expect("Failed to execute command. Is ffmpeg installed?");
 
     let std_out = String::from_utf8_lossy(&output.stdout);
     let lines = std_out.lines().collect::<Vec<&str>>();
@@ -84,9 +84,9 @@ pub fn get_codec(file_path: &str, codec_type: CodecType) -> String {
         audio_or_video,
         file_path
     );
-    let r = execute_cmd_get_lines(&cmd);
-    let r = r.last();
-    match r {
+    let lines = execute_cmd_get_lines(&cmd);
+    let result = lines.last();
+    match result {
         Some(r) => r.to_owned(),
         None => "".to_owned(),
     }
