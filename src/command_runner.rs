@@ -87,7 +87,7 @@ pub fn get_codec(file_path: &str, codec_type: CodecType) -> String {
     let r = execute_cmd_get_lines(&cmd);
     let r = r.last();
     match r {
-        None => "".to_owned(),
         Some(r) => r.to_owned(),
+        None => "".to_owned(),
     }
 }

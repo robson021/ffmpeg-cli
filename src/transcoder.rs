@@ -95,7 +95,7 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
 
 #[inline(always)]
 fn ask_input_file() -> Result<String, &'static str> {
-    println!("Provide video path (e.g. /aaa/bbb/ccc/video.mp4):");
+    println!("Provide video path (e.g. /some/directory/video.mp4):");
     let path = read_input();
     match Path::new(&path).exists() {
         true => Ok(path),
@@ -111,7 +111,7 @@ fn build_command(
         Ok(cmd) => Ok(cmd),
         Err(err) => {
             debug!("{}", err);
-            Err("Failed to build convert ffmpeg command.")
+            Err("Failed to build ffmpeg command.")
         }
     }
 }

@@ -51,32 +51,41 @@ pub struct FfmpegCommand {
 }
 impl FfmpegCommand {
     pub fn as_cmd_string(&self) -> String {
-        let mut cmd = String::from("ffmpeg");
-        cmd.push_str(" -i ");
-        cmd.push_str(&self.input_file);
-
-        let video_codec = self.video_codec.as_string().to_lowercase();
-        let audio_codec = self.audio_codec.as_string().to_lowercase();
-        cmd.push_str(" -c:v ");
-        cmd.push_str(&video_codec);
-        cmd.push_str(" -c:a ");
-        cmd.push_str(&audio_codec);
+        let mut cmd = self.cmd_with_codecs();
 
         match self.command_type {
-            CommandType::ConvertFormat => {}
+            CommandType::ConvertFormat => {
+                cmd.push_str(" -c:av copy");
+            }
             CommandType::Compress => {
-                cmd.push_str(" -preset veryslow -crf 24");
+                cmd.push_str(r#" -vf "scale=1280:-2" -preset veryslow -crf 24"#);
             }
             CommandType::MultiTask => {
                 todo!()
             }
             CommandType::YoutubeOptimized => {
-                // ffmpeg -i input_video.mp4 -vf "scale=1280:-2" -c:v libx264 -crf 23 -preset medium -c:a aac -b:a 320k output.mp4
                 cmd.push_str(" -crf 23 -preset medium -b:a 320k -qscale 0");
             }
         }
         cmd.push(' ');
         cmd.push_str(self.output_file.as_str());
+        cmd
+    }
+
+    fn cmd_with_codecs(&self) -> String {
+        let mut cmd = String::from("ffmpeg -i ");
+        cmd.push_str(&self.input_file);
+        match self.command_type {
+            CommandType::ConvertFormat => {}
+            _ => {
+                let video_codec = self.video_codec.as_string().to_lowercase();
+                let audio_codec = self.audio_codec.as_string().to_lowercase();
+                cmd.push_str(" -c:v ");
+                cmd.push_str(&video_codec);
+                cmd.push_str(" -c:a ");
+                cmd.push_str(&audio_codec);
+            }
+        };
         cmd
     }
 }
@@ -97,7 +106,7 @@ mod tests {
             .as_cmd_string();
 
         assert_eq!(
-            "ffmpeg -i /aaa/bbb/input_video.mp4 -c:v h264 -c:a aac /ccc/ddd/output_video.avi",
+            "ffmpeg -i /aaa/bbb/input_video.mp4 -c:av copy /ccc/ddd/output_video.avi",
             cmd,
         );
     }
@@ -115,8 +124,26 @@ mod tests {
             .as_cmd_string();
 
         assert_eq!(
-            "ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -preset veryslow -crf 24 /ccc/ddd/output_video.avi",
+            r#"ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -vf "scale=1280:-2" -preset veryslow -crf 24 /ccc/ddd/output_video.avi"#,
             cmd,
         );
+    }
+
+    #[test]
+    fn should_build_youtube_command() {
+        let cmd = FfmpegCommandBuilder::default()
+            .command_type(CommandType::YoutubeOptimized)
+            .input_file("/aaa/bbb/input_video.avi")
+            .output_file("/ccc/ddd/output_video.mp4")
+            .audio_codec(AudioCodec::Aac)
+            .video_codec(VideoCodec::Libx264)
+            .build()
+            .unwrap()
+            .as_cmd_string();
+
+        assert_eq!(
+            "ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -crf 23 -preset medium -b:a 320k -qscale 0 /ccc/ddd/output_video.mp4",
+            cmd,
+        )
     }
 }
