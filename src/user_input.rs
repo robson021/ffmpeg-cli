@@ -1,0 +1,40 @@
+use crate::{string_utils, video_check};
+use log::debug;
+use std::path::Path;
+
+pub fn read_input() -> String {
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .expect("Can not read user input.");
+    input.trim().to_owned()
+}
+
+pub fn ask_input_and_output_file() -> Result<(String, String, String), &'static str> {
+    let input = ask_input_file()?;
+    let format = &ask_output_format()?;
+    let format = ".".to_owned() + format;
+    let output = string_utils::change_file_extension(&input, &format)?;
+    debug!("Input: {}, Output: {}, Format: {}", input, output, format);
+    Ok((input, output, format))
+}
+
+#[inline]
+pub fn ask_input_file() -> Result<String, &'static str> {
+    println!("Provide video path (e.g. /some/directory/video.mp4):");
+    let path = read_input();
+    match Path::new(&path).exists() {
+        true => Ok(path),
+        false => Err("File does not exist."),
+    }
+}
+
+#[inline]
+fn ask_output_format() -> Result<String, &'static str> {
+    println!("Provide output format (e.g. mp4):");
+    let format = read_input();
+    match video_check::has_valid_extension(&format) {
+        true => Ok(format),
+        false => Err("Invalid format."),
+    }
+}

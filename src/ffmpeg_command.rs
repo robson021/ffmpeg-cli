@@ -1,4 +1,4 @@
-use crate::string_utils;
+use crate::codecs::{AudioCodec, CodecAsString, VideoCodec};
 
 #[derive(Debug, Clone, Default)]
 pub enum CommandType {
@@ -7,49 +7,6 @@ pub enum CommandType {
     ConvertFormat,
     YoutubeOptimized,
     MultiTask,
-}
-
-#[derive(Debug, Clone, Default)]
-pub enum AudioCodec {
-    #[default]
-    Aac,
-    Custom,
-}
-#[derive(Debug, Clone, Default)]
-pub enum VideoCodec {
-    #[default]
-    Libx264,
-    H264,
-    Custom,
-}
-
-pub trait CodecAsString {
-    fn as_string(&self) -> String;
-}
-
-impl CodecAsString for AudioCodec {
-    fn as_string(&self) -> String {
-        match self {
-            AudioCodec::Aac => "aac".to_owned(),
-            _ => {
-                println!("Provide audio codec:");
-                string_utils::read_input()
-            }
-        }
-    }
-}
-
-impl CodecAsString for VideoCodec {
-    fn as_string(&self) -> String {
-        match self {
-            VideoCodec::H264 => "h264".to_owned(),
-            VideoCodec::Libx264 => "libx264".to_owned(),
-            _ => {
-                println!("Provide video codec:");
-                string_utils::read_input()
-            }
-        }
-    }
 }
 
 #[derive(Default, Debug, derive_builder::Builder)]
@@ -80,9 +37,7 @@ impl FfmpegCommand {
         let mut cmd = self.cmd_with_codecs();
 
         match self.command_type {
-            CommandType::ConvertFormat => {
-                cmd.push_str(" -c:av copy");
-            }
+            CommandType::ConvertFormat => { /* skip */ }
             CommandType::Compress => {
                 cmd.push_str(r#" -vf "scale=1280:-2" -preset veryslow -crf 24"#);
             }
@@ -113,7 +68,7 @@ impl FfmpegCommand {
         let mut cmd = String::from("ffmpeg -i ");
         cmd.push_str(&self.input_file);
         match self.command_type {
-            CommandType::ConvertFormat => {}
+            CommandType::ConvertFormat => { /* skip additional params */ }
             _ => {
                 let video_codec = self.video_codec.as_string().to_lowercase();
                 let audio_codec = self.audio_codec.as_string().to_lowercase();
@@ -143,7 +98,7 @@ mod tests {
             .as_cmd_string();
 
         assert_eq!(
-            "ffmpeg -i /aaa/bbb/input_video.mp4 -c:av copy /ccc/ddd/output_video.avi",
+            "ffmpeg -i /aaa/bbb/input_video.mp4 /ccc/ddd/output_video.avi",
             cmd,
         );
     }
@@ -204,5 +159,23 @@ mod tests {
             r#"ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -vf "scale=1280-2" -b:a 320k -preset medium -crf 24 /ccc/ddd/output_video.mp4"#,
             cmd,
         )
+    }
+
+    #[test]
+    fn should_build_multi_task_command_and_skip_optional_arguments() {
+        let cmd = builder()
+            .command_type(CommandType::MultiTask)
+            .input_file("/aaa/input_video.avi")
+            .output_file("/bbb/output_video.mp4")
+            .audio_codec(AudioCodec::Aac)
+            .video_codec(VideoCodec::H264)
+            .build()
+            .unwrap()
+            .as_cmd_string();
+
+        assert_eq!(
+            r#"ffmpeg -i /aaa/input_video.avi -c:v h264 -c:a aac /bbb/output_video.mp4"#,
+            cmd,
+        );
     }
 }

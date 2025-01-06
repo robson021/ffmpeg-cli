@@ -1,23 +1,15 @@
+use crate::codecs::{AudioCodec, CodecAsString, VideoCodec};
 use crate::command_runner::CodecType;
-use crate::ffmpeg_command::{
-    AudioCodec, CodecAsString, CommandType, FfmpegCommand, FfmpegCommandBuilderError, VideoCodec,
-};
-use crate::string_utils::read_input;
-use crate::{command_runner, ffmpeg_command, string_utils, video_check};
+use crate::ffmpeg_command::{CommandType, FfmpegCommand, FfmpegCommandBuilderError};
+use crate::{command_runner, ffmpeg_command, string_utils, user_input};
 use log::debug;
-use std::path::Path;
 
 pub fn convert() -> Result<FfmpegCommand, &'static str> {
-    let input = ask_input_file()?;
-    let format = ask_output_format()?;
+    let (input, output, format) = user_input::ask_input_and_output_file()?;
 
-    let format = ".".to_string() + &format;
     if input.ends_with(&format) {
         return Err("Input and output formats are the same.");
     }
-
-    let output = string_utils::change_file_extension(&input, &format)?;
-    debug!("Path with changed file extension: {}", output);
 
     let cmd = ffmpeg_command::builder()
         .command_type(CommandType::ConvertFormat)
@@ -31,7 +23,7 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
 }
 
 pub fn compress() -> Result<FfmpegCommand, &'static str> {
-    let input = ask_input_file()?;
+    let input = user_input::ask_input_file()?;
     let output = string_utils::change_file_extension(&input, "_compressed.mp4")?;
 
     let cmd = ffmpeg_command::builder()
@@ -46,7 +38,7 @@ pub fn compress() -> Result<FfmpegCommand, &'static str> {
 }
 
 pub fn youtube_optimized() -> Result<FfmpegCommand, &'static str> {
-    let input = ask_input_file()?;
+    let input = user_input::ask_input_file()?;
     let audio_codec = command_runner::get_codec(&input, CodecType::Audio);
     let video_codec = command_runner::get_codec(&input, CodecType::Video);
 
@@ -83,8 +75,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, &'static str> {
 }
 
 pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
-    let input = ask_input_file()?;
-    let output = ask_output_format()?;
+    let (input, output, _) = user_input::ask_input_and_output_file()?;
 
     let mut cmd = ffmpeg_command::builder();
     let cmd = cmd
@@ -97,6 +88,7 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
     println!(
         "You will be asked a few optional parameters. Leave the input blank to skip any of them."
     );
+    let read_input = user_input::read_input;
 
     println!("Scale (e.g. 1280):");
     let scale = read_input();
@@ -122,7 +114,7 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
     let preset = read_input();
     if !preset.is_empty() {
         cmd.preset(preset);
-    } 
+    }
 
     println!("Constant Rate Factor [CRF] (e.g. 24):");
     let crf = read_input();
@@ -135,27 +127,6 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
         };
     }
     unwrap_ffmpeg_command(cmd.build())
-}
-
-#[inline(always)]
-fn ask_input_file() -> Result<String, &'static str> {
-    println!("Provide video path (e.g. /some/directory/video.mp4):");
-    let path = read_input();
-    match Path::new(&path).exists() {
-        true => Ok(path),
-        false => Err("File does not exist."),
-    }
-}
-
-fn ask_output_format() -> Result<String, &'static str> {
-    println!("Provide output format:");
-    let format = read_input();
-
-    let valid_extension = video_check::has_valid_extension(&format);
-    if !valid_extension {
-        return Err("Invalid format.");
-    }
-    Ok(format)
 }
 
 #[inline(always)]

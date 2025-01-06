@@ -1,11 +1,12 @@
-use crate::string_utils::read_input;
 use log::debug;
 
+mod codecs;
 mod command_runner;
 mod ffmpeg_command;
 mod logger_config;
 mod string_utils;
 mod transcoder;
+mod user_input;
 mod video_check;
 
 fn print_menu() {
@@ -22,7 +23,7 @@ fn main() {
     println!("Welcome to ffmpeg-cli!");
     loop {
         print_menu();
-        let option = read_input().parse::<i32>();
+        let option = user_input::read_input().parse::<i32>();
         match option {
             Ok(option) => {
                 if option == 0 {

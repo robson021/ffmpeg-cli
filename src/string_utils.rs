@@ -1,13 +1,5 @@
 use log::debug;
 
-pub fn read_input() -> String {
-    let mut input = String::new();
-    std::io::stdin()
-        .read_line(&mut input)
-        .expect("Can not read user input.");
-    input.trim().to_owned()
-}
-
 pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, &'static str> {
     let extension = find_file_extension(path)?;
     let new_path = path.replace(&extension, new_extension);

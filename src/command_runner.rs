@@ -16,16 +16,19 @@ pub fn run_command(command: &FfmpegCommand) -> Result<(), i32> {
     Ok(())
 }
 
-fn get_command_builder() -> Command {
+#[inline]
+fn get_system_specific_program_and_arg() -> (&'static str, &'static str) {
     if cfg!(target_os = "windows") {
-        todo!()
+        ("cmd", "/C")
+    } else {
+        ("sh", "-c")
     }
-    Command::new("sh")
 }
 
 fn execute_and_wait(command: String) -> i32 {
-    get_command_builder()
-        .arg("-c")
+    let program_arg = get_system_specific_program_and_arg();
+    Command::new(program_arg.0)
+        .arg(program_arg.1)
         .arg(command)
         .spawn()
         .expect("failed to execute process")
@@ -58,8 +61,9 @@ pub fn get_supported_formats() -> HashSet<String> {
 }
 
 fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
-    let output = get_command_builder()
-        .arg("-c")
+    let program_arg = get_system_specific_program_and_arg();
+    let output = Command::new(program_arg.0)
+        .arg(program_arg.1)
         .arg(cmd)
         .output()
         .expect("Failed to execute command. Is ffmpeg installed?");
