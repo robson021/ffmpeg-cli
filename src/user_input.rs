@@ -1,5 +1,7 @@
+use crate::error::TranscoderError;
 use crate::{string_utils, video_check};
 use log::debug;
+use std::error::Error;
 use std::path::Path;
 
 pub fn read_input() -> String {
@@ -10,7 +12,7 @@ pub fn read_input() -> String {
     input.trim().to_owned()
 }
 
-pub fn ask_input_and_output_file() -> Result<(String, String, String), &'static str> {
+pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn Error>> {
     let input = ask_input_file()?;
     let format = &ask_output_format()?;
     let format = ".".to_owned() + format;
@@ -20,12 +22,12 @@ pub fn ask_input_and_output_file() -> Result<(String, String, String), &'static 
 }
 
 #[inline]
-pub fn ask_input_file() -> Result<String, &'static str> {
+pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
     println!("Provide video path (e.g. /some/directory/video.mp4):");
     let path = read_input();
     match Path::new(&path).exists() {
         true => Ok(path),
-        false => Err("File does not exist."),
+        false => Err(TranscoderError::FileNotFound(path).into()),
     }
 }
 

@@ -1,14 +1,17 @@
 use crate::codecs::{AudioCodec, CodecAsString, VideoCodec};
 use crate::command_runner::CodecType;
+use crate::error::TranscoderError;
+use crate::error::TranscoderError::InvalidCommand;
 use crate::ffmpeg_command::{CommandType, FfmpegCommand, FfmpegCommandBuilderError};
 use crate::{command_runner, ffmpeg_command, string_utils, user_input};
 use log::debug;
+use std::error::Error;
 
-pub fn convert() -> Result<FfmpegCommand, &'static str> {
+pub fn convert() -> Result<FfmpegCommand, Box<dyn Error>> {
     let (input, output, format) = user_input::ask_input_and_output_file()?;
 
     if input.ends_with(&format) {
-        return Err("Input and output formats are the same.");
+        return Err(TranscoderError::SameInputAndOutput.into());
     }
 
     let cmd = ffmpeg_command::builder()
@@ -22,7 +25,7 @@ pub fn convert() -> Result<FfmpegCommand, &'static str> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn compress() -> Result<FfmpegCommand, &'static str> {
+pub fn compress() -> Result<FfmpegCommand, Box<dyn Error>> {
     let input = user_input::ask_input_file()?;
     let output = string_utils::change_file_extension(&input, "_compressed.mp4")?;
 
@@ -37,7 +40,7 @@ pub fn compress() -> Result<FfmpegCommand, &'static str> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn youtube_optimized() -> Result<FfmpegCommand, &'static str> {
+pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
     let input = user_input::ask_input_file()?;
     let audio_codec = command_runner::get_codec(&input, CodecType::Audio);
     let video_codec = command_runner::get_codec(&input, CodecType::Video);
@@ -57,7 +60,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, &'static str> {
         let ext = ext == ".mp4";
 
         if audio && video && ext {
-            return Err("The file already has recommended codecs and mp4 format.");
+            return Err(TranscoderError::FileAlreadyInProperOutput.into());
         }
     }
 
@@ -74,7 +77,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, &'static str> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
+pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
     let (input, output, _) = user_input::ask_input_and_output_file()?;
 
     let mut cmd = ffmpeg_command::builder();
@@ -132,12 +135,12 @@ pub fn multi_task() -> Result<FfmpegCommand, &'static str> {
 #[inline(always)]
 fn unwrap_ffmpeg_command(
     cmd: Result<FfmpegCommand, FfmpegCommandBuilderError>,
-) -> Result<FfmpegCommand, &'static str> {
+) -> Result<FfmpegCommand, Box<dyn Error>> {
     match cmd {
         Ok(cmd) => Ok(cmd),
         Err(err) => {
             debug!("{}", err);
-            Err("Failed to build ffmpeg command.")
+            Err(InvalidCommand.into())
         }
     }
 }

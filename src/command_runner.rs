@@ -1,15 +1,17 @@
+use crate::error::ProcessFailure;
 use crate::ffmpeg_command::FfmpegCommand;
 use std::collections::HashSet;
 use std::process::Command;
 use std::time::Instant;
 
-pub fn run_command(command: &FfmpegCommand) -> Result<(), i32> {
+pub fn run_command(command: &FfmpegCommand) -> Result<(), ProcessFailure> {
     let command = command.as_cmd_string();
     println!("Running command: {:?}", command);
+
     let start = Instant::now();
-    let status_code = execute_and_wait(command);
+    let status_code = execute_and_wait(command)?;
     if status_code != 0 {
-        return Err(status_code);
+        return Err(ProcessFailure::CommandExecution(status_code));
     };
     let time = start.elapsed().as_secs();
     println!("Task executed successfully! Time elapsed: {}s", time);
@@ -25,17 +27,20 @@ fn get_system_specific_program_and_arg() -> (&'static str, &'static str) {
     }
 }
 
-fn execute_and_wait(command: String) -> i32 {
+fn execute_and_wait(command: String) -> Result<i32, ProcessFailure> {
     let program_arg = get_system_specific_program_and_arg();
-    Command::new(program_arg.0)
+    let cmd = Command::new(program_arg.0)
         .arg(program_arg.1)
         .arg(command)
-        .spawn()
-        .expect("failed to execute process")
-        .wait()
-        .expect("failed to wait on a process")
-        .code()
-        .unwrap()
+        .spawn();
+    if cmd.is_err() {
+        return Err(ProcessFailure::Spawn);
+    }
+    let cmd = cmd.unwrap().wait();
+    if cmd.is_err() {
+        return Err(ProcessFailure::Await);
+    }
+    Ok(cmd.unwrap().code().unwrap())
 }
 
 pub fn get_supported_formats() -> HashSet<String> {

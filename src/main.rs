@@ -1,7 +1,11 @@
+use crate::error::TranscoderError;
+use crate::ffmpeg_command::FfmpegCommand;
 use log::debug;
+use std::error::Error;
 
 mod codecs;
 mod command_runner;
+mod error;
 mod ffmpeg_command;
 mod logger_config;
 mod string_utils;
@@ -23,39 +27,33 @@ fn main() {
     println!("Welcome to ffmpeg-cli!");
     loop {
         print_menu();
-        let option = user_input::read_input().parse::<i32>();
-        match option {
-            Ok(option) => {
-                if option == 0 {
-                    break;
-                }
-                handle_menu_option(option)
-            }
+        match user_input::read_input().parse::<i32>() {
+            Ok(o) => handle_menu_option(o),
             Err(_) => println!("Invalid option. A number was expected."),
         }
     }
-    println!("Shutting down.");
 }
 
 fn handle_menu_option(option: i32) {
-    let ffmpeg_command = match option {
+    let ffmpeg_command: Result<FfmpegCommand, Box<dyn Error>> = match option {
         1 => transcoder::convert(),
         2 => transcoder::compress(),
         3 => transcoder::multi_task(),
         4 => transcoder::youtube_optimized(),
-        _ => Err("Invalid choice."),
+        0 => std::process::exit(0),
+        _ => Err(TranscoderError::UnsupportedOperation.into()),
     };
 
     match ffmpeg_command {
-        Ok(cmd) => {
-            let result = command_runner::run_command(&cmd);
-            match result {
-                Ok(_) => {
-                    debug!("Successfully executed command: {}.", cmd.as_cmd_string());
-                }
-                Err(code) => eprintln!("Error. Process exit with the status: {}", code),
-            }
-        }
+        Ok(cmd) => run_cmd(&cmd),
         Err(error) => eprintln!("{}", error),
+    }
+}
+
+#[inline(always)]
+fn run_cmd(cmd: &FfmpegCommand) {
+    match command_runner::run_command(cmd) {
+        Ok(_) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),
+        Err(reason) => eprintln!("Failed to run the command. Reason: {}", reason),
     }
 }
