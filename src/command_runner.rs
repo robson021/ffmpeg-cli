@@ -65,7 +65,7 @@ pub fn get_supported_formats() -> HashSet<String> {
     formats.into_iter().collect()
 }
 
-fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
+pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
     let program_arg = get_system_specific_program_and_arg();
     let output = Command::new(program_arg.0)
         .arg(program_arg.1)
@@ -76,27 +76,4 @@ fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
     let std_out = String::from_utf8_lossy(&output.stdout);
     let lines = std_out.lines().collect::<Vec<&str>>();
     lines.into_iter().map(|line| line.to_owned()).collect()
-}
-
-pub enum CodecType {
-    Audio,
-    Video,
-}
-
-pub fn get_codec(file_path: &str, codec_type: CodecType) -> String {
-    let audio_or_video = match codec_type {
-        CodecType::Audio => "a:0",
-        CodecType::Video => "v:0",
-    };
-    let cmd = format!(
-        "ffprobe -v error -select_streams {} -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {}",
-        audio_or_video,
-        file_path
-    );
-    let lines = execute_cmd_get_lines(&cmd);
-    let result = lines.last();
-    match result {
-        Some(r) => r.to_owned(),
-        None => "".to_owned(),
-    }
 }

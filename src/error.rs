@@ -13,8 +13,8 @@ pub enum TranscoderError {
     FileNotFound(String),
     InvalidCommand,
     SameInputAndOutput,
-    FileAlreadyInProperOutput,
     UnsupportedOperation,
+    AbortTranscoding(String),
 }
 
 impl Display for TranscoderError {
@@ -25,9 +25,7 @@ impl Display for TranscoderError {
             TranscoderError::SameInputAndOutput => {
                 f.write_str("Input and output formats are the same.")
             }
-            TranscoderError::FileAlreadyInProperOutput => {
-                f.write_str("The file already has recommended codecs and mp4 format.")
-            }
+            TranscoderError::AbortTranscoding(reason) => format!("Aborted. {}.", reason).fmt(f),
             TranscoderError::UnsupportedOperation => f.write_str("Unsupported operation."),
         }
     }
