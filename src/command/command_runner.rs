@@ -1,5 +1,6 @@
 use crate::command::ffmpeg_command::FfmpegCommand;
 use crate::error::ProcessFailure;
+use log::debug;
 use std::collections::HashSet;
 use std::process::Command;
 use std::time::Instant;
@@ -62,7 +63,9 @@ pub fn get_supported_formats() -> HashSet<String> {
         let line = line[1];
         formats.push(line.to_owned())
     }
-    formats.into_iter().collect()
+    let set: HashSet<String> = formats.into_iter().collect();
+    debug!("Found: {} supported formats", set.len());
+    set
 }
 
 pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
@@ -76,4 +79,14 @@ pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
     let std_out = String::from_utf8_lossy(&output.stdout);
     let lines = std_out.lines().collect::<Vec<&str>>();
     lines.into_iter().map(|line| line.to_owned()).collect()
+}
+
+pub fn get_ffmpeg_version() -> String {
+    let v = execute_cmd_get_lines("ffmpeg -version")[0].to_owned();
+    let prefix = "ffmpeg version ";
+    if !v.contains(prefix) {
+        return "Could not find ffmpeg version. Is ffmpeg installed?".to_owned();
+    }
+    let idx = prefix.len();
+    v.as_str()[idx..idx + 4].trim().to_owned()
 }

@@ -1,4 +1,5 @@
 use crate::command::command_runner;
+use crate::command::command_runner::get_ffmpeg_version;
 use crate::command::ffmpeg_command::FfmpegCommand;
 use crate::error::TranscoderError;
 use crate::media::transcoder;
@@ -24,6 +25,7 @@ fn print_menu() {
 fn main() {
     logger_config::setup_logger();
     println!("Welcome to ffmpeg-cli!");
+    println!("Installed ffmpeg version is: {}", get_ffmpeg_version());
     loop {
         print_menu();
         match user_input::read_input().parse::<i32>() {
