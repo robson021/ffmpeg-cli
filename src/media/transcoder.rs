@@ -1,8 +1,10 @@
-use crate::codecs::{AudioCodec, CodecAsString, CodecType, VideoCodec};
+use crate::command::ffmpeg_command;
+use crate::command::ffmpeg_command::{CommandType, FfmpegCommand, FfmpegCommandBuilderError};
 use crate::error::TranscoderError;
 use crate::error::TranscoderError::InvalidCommand;
-use crate::ffmpeg_command::{CommandType, FfmpegCommand, FfmpegCommandBuilderError};
-use crate::{codecs, ffmpeg_command, string_utils, user_input};
+use crate::media::codecs;
+use crate::media::codecs::{AudioCodec, CodecAsString, CodecType, VideoCodec};
+use crate::{string_utils, user_input};
 use log::debug;
 use std::error::Error;
 

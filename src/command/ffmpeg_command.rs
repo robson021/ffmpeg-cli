@@ -1,4 +1,4 @@
-use crate::codecs::{AudioCodec, CodecAsString, VideoCodec};
+use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
 
 #[derive(Debug, Clone, Default)]
 pub enum CommandType {

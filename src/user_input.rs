@@ -1,5 +1,6 @@
 use crate::error::TranscoderError;
-use crate::{string_utils, video_check};
+use crate::media::video_check;
+use crate::string_utils;
 use log::debug;
 use std::error::Error;
 use std::path::Path;
@@ -14,8 +15,8 @@ pub fn read_input() -> String {
 
 pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn Error>> {
     let input = ask_input_file()?;
-    let format = &ask_output_format()?;
-    let format = ".".to_owned() + format;
+    let format = ask_output_format()?;
+    let format = ".".to_owned() + &format;
     let output = string_utils::change_file_extension(&input, &format)?;
     debug!("Input: {}, Output: {}, Format: {}", input, output, format);
     Ok((input, output, format))

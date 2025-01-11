@@ -1,5 +1,5 @@
+use crate::command::ffmpeg_command::FfmpegCommand;
 use crate::error::ProcessFailure;
-use crate::ffmpeg_command::FfmpegCommand;
 use std::collections::HashSet;
 use std::process::Command;
 use std::time::Instant;

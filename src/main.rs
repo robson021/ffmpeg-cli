@@ -1,17 +1,16 @@
+use crate::command::command_runner;
+use crate::command::ffmpeg_command::FfmpegCommand;
 use crate::error::TranscoderError;
-use crate::ffmpeg_command::FfmpegCommand;
+use crate::media::transcoder;
 use log::debug;
 use std::error::Error;
 
-mod codecs;
-mod command_runner;
+mod command;
 mod error;
-mod ffmpeg_command;
 mod logger_config;
+mod media;
 mod string_utils;
-mod transcoder;
 mod user_input;
-mod video_check;
 
 fn print_menu() {
     println!("\nChose an option:");
