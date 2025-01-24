@@ -70,8 +70,8 @@ impl FfmpegCommand {
         match self.command_type {
             CommandType::ConvertFormat => { /* skip additional params */ }
             _ => {
-                let video_codec = self.video_codec.as_string().to_lowercase();
-                let audio_codec = self.audio_codec.as_string().to_lowercase();
+                let video_codec = self.video_codec.as_str().to_lowercase();
+                let audio_codec = self.audio_codec.as_str().to_lowercase();
                 cmd.push_str(" -c:v ");
                 cmd.push_str(&video_codec);
                 cmd.push_str(" -c:a ");

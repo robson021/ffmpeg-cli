@@ -52,11 +52,11 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
     );
 
     {
-        let h264 = VideoCodec::H264.as_string() == video_codec;
-        let libx264 = VideoCodec::Libx264.as_string() == video_codec;
+        let h264 = VideoCodec::H264.as_str() == video_codec;
+        let libx264 = VideoCodec::Libx264.as_str() == video_codec;
 
         let video = h264 || libx264;
-        let audio = AudioCodec::Aac.as_string() == audio_codec;
+        let audio = AudioCodec::Aac.as_str() == audio_codec;
         let ext = string_utils::find_file_extension(&input)?;
         let ext = ext == ".mp4";
 

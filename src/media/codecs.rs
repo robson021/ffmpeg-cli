@@ -13,24 +13,24 @@ pub enum VideoCodec {
 }
 
 pub trait CodecAsString {
-    fn as_string(&self) -> String;
+    fn as_str(&self) -> &str;
 }
 
 impl CodecAsString for AudioCodec {
-    fn as_string(&self) -> String {
+    fn as_str(&self) -> &str {
         match self {
-            AudioCodec::Aac => "aac".to_owned(),
-            AudioCodec::Custom(codec) => codec.to_owned(),
+            AudioCodec::Aac => "aac",
+            AudioCodec::Custom(codec) => codec,
         }
     }
 }
 
 impl CodecAsString for VideoCodec {
-    fn as_string(&self) -> String {
+    fn as_str(&self) -> &str {
         match self {
-            VideoCodec::H264 => "h264".to_owned(),
-            VideoCodec::Libx264 => "libx264".to_owned(),
-            VideoCodec::Custom(codec) => codec.to_owned(),
+            VideoCodec::H264 => "h264",
+            VideoCodec::Libx264 => "libx264",
+            VideoCodec::Custom(codec) => codec,
         }
     }
 }
