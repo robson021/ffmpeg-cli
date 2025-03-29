@@ -1,7 +1,7 @@
 use crate::error::TranscoderError;
 use crate::media::video_check;
 use crate::string_utils;
-use log::debug;
+use log::{debug, error};
 use std::error::Error;
 use std::path::Path;
 
@@ -26,10 +26,17 @@ pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn E
 pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
     println!("Provide video path (e.g. /some/directory/video.mp4):");
     let path = read_input();
-    match Path::new(&path).exists() {
-        true => Ok(path),
-        false => Err(TranscoderError::FileNotFound(path).into()),
-    }
+    let file = match Path::new(&path).try_exists() {
+        Ok(exists) => match exists {
+            true => {
+                debug!("File exists: {}", path);
+                Ok(path)
+            }
+            false => Err(TranscoderError::FileNotFound(path).into()),
+        },
+        Err(_) => Err(TranscoderError::CouldNotCheckFileExistence(path).into()),
+    };
+    file
 }
 
 #[inline]
