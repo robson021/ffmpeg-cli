@@ -5,7 +5,7 @@ use crate::error::TranscoderError::InvalidCommand;
 use crate::media::codecs;
 use crate::media::codecs::{AudioCodec, CodecAsString, CodecType, VideoCodec};
 use crate::{string_utils, user_input};
-use log::debug;
+use log::{debug, warn};
 use std::error::Error;
 
 pub fn convert() -> Result<FfmpegCommand, Box<dyn Error>> {
@@ -62,7 +62,10 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
 
         if audio && video && ext {
             let reason = "The file already has recommended codecs and mp4 format.";
-            return Err(TranscoderError::AbortTranscoding(reason.to_owned()).into());
+            warn!("{} Do you want to proceed anyway (Y/n)?", reason);
+            if user_input::read_input().to_lowercase() == "n" {
+                return Err(TranscoderError::AbortTranscoding(reason.to_owned()).into());
+            }
         }
     }
 
