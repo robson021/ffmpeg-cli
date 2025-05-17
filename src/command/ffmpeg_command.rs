@@ -1,4 +1,5 @@
 use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
+use crate::string_utils;
 
 #[derive(Debug, Clone, Default)]
 pub enum CommandType {
@@ -34,7 +35,13 @@ pub fn builder() -> FfmpegCommandBuilder {
 
 impl FfmpegCommand {
     pub fn as_cmd_string(&self) -> String {
-        let mut cmd = self.cmd_with_codecs();
+        let (input, output) =
+            string_utils::add_quotes_if_whitespace_present(&self.input_file, &self.output_file);
+
+        let mut cmd = String::from("ffmpeg -i ");
+        cmd.push_str(&input);
+
+        cmd.push_str(&self.codecs_args());
 
         match self.command_type {
             CommandType::ConvertFormat => { /* skip */ }
@@ -60,13 +67,12 @@ impl FfmpegCommand {
             }
         }
         cmd.push(' ');
-        cmd.push_str(self.output_file.as_str());
+        cmd.push_str(&output);
         cmd
     }
 
-    fn cmd_with_codecs(&self) -> String {
-        let mut cmd = String::from("ffmpeg -i ");
-        cmd.push_str(&self.input_file);
+    fn codecs_args(&self) -> String {
+        let mut cmd = String::from("");
         match self.command_type {
             CommandType::ConvertFormat => { /* skip additional params */ }
             _ => {

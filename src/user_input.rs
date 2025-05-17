@@ -1,7 +1,7 @@
 use crate::error::TranscoderError;
 use crate::media::video_check;
 use crate::string_utils;
-use log::{debug, error};
+use log::debug;
 use std::error::Error;
 use std::path::Path;
 

@@ -27,6 +27,24 @@ fn last_index_of_char(s: &str, to_find: char) -> Option<usize> {
         .map(|rev_pos| s.chars().count() - rev_pos - 1)
 }
 
+pub fn add_quotes_if_whitespace_present(input: &str, output: &str) -> (String, String) {
+    let input = wrap_with_quotes_if_whitespace(input);
+    let output = wrap_with_quotes_if_whitespace(output);
+    (input, output)
+}
+
+#[inline(always)]
+fn wrap_with_quotes_if_whitespace(s: &str) -> String {
+    if s.contains(' ') {
+        let mut with_quotes = String::from("\"");
+        with_quotes.push_str(s);
+        with_quotes.push('"');
+        with_quotes
+    } else {
+        s.to_owned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,5 +71,16 @@ mod tests {
     fn should_change_extension() {
         let new_path = change_file_extension("aaa/bbb/cc/video.mp4", ".avi").unwrap();
         assert_eq!(new_path, "aaa/bbb/cc/video.avi");
+    }
+
+    #[test]
+    fn should_clean_input_and_output_whitespaces() {
+        let input = "/some/path with whitespaces/file name.mp4";
+        let result = wrap_with_quotes_if_whitespace(input);
+        assert_eq!(result, format!("\"{}\"", input));
+
+        let input = "some/path/no_whitespace/file.mp4";
+        let result = wrap_with_quotes_if_whitespace(input);
+        assert_eq!(result, input);
     }
 }
