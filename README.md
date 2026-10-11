@@ -1,5 +1,7 @@
 ## CLI tool for ffmpeg
 
+[![CI](https://github.com/robson021/ffmpeg-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/robson021/ffmpeg-cli/actions/workflows/ci.yml)
+
 - You need to have ffmpeg installed. If you are Mac user, use Homebrew - https://formulae.brew.sh/formula/ffmpeg
 - Docs: https://ffmpeg.org/ffmpeg.html
 
