@@ -18,7 +18,7 @@ pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn E
     let format = ask_output_format()?;
     let format = ".".to_owned() + &format;
     let output = string_utils::change_file_extension(&input, &format)?;
-    debug!("Input: {}, Output: {}, Format: {}", input, output, format);
+    debug!("Input: {input}, Output: {output}, Format: {format}");
     Ok((input, output, format))
 }
 
@@ -28,7 +28,7 @@ pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
     let file = match Path::new(&path).try_exists() {
         Ok(exists) => match exists {
             true => {
-                debug!("File exists: {}", path);
+                debug!("File exists: {path}");
                 Ok(path)
             }
             false => Err(TranscoderError::FileNotFound(path).into()),

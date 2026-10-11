@@ -10,11 +10,11 @@ pub fn find_file_extension(path: &str) -> Result<String, &'static str> {
     match last_index_of_char(path, '.') {
         Some(idx) => {
             let ext = &path[idx..];
-            debug!("Found video with an extension: {}", ext);
+            debug!("Found video with an extension: {ext}");
             Ok(ext.to_owned())
         }
         None => {
-            debug!("Found no extension for the path: {}", path);
+            debug!("Found no extension for the path: {path}");
             Err("No extension found.")
         }
     }
@@ -76,7 +76,7 @@ mod tests {
     fn should_clean_input_and_output_whitespaces() {
         let input = "/some/path with whitespaces/file name.mp4";
         let result = wrap_with_quotes_if_whitespace(input);
-        assert_eq!(result, format!("\"{}\"", input));
+        assert_eq!(result, format!("\"{input}\""));
 
         let input = "some/path/no_whitespace/file.mp4";
         let result = wrap_with_quotes_if_whitespace(input);

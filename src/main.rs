@@ -27,7 +27,7 @@ fn main() {
     logger_config::setup_logger();
     if std::env::args().any(|arg| arg == "--gui") {
         if let Err(error) = gui::run() {
-            eprintln!("Failed to start GUI: {}", error);
+            eprintln!("Failed to start GUI: {error}");
         }
         return;
     }
@@ -55,13 +55,13 @@ fn handle_menu_option(option: i32) {
 
     match ffmpeg_command {
         Ok(cmd) => run_cmd(&cmd),
-        Err(error) => eprintln!("{}", error),
+        Err(error) => eprintln!("{error}"),
     }
 }
 
 fn run_cmd(cmd: &FfmpegCommand) {
     match command_runner::run_command(cmd) {
         Ok(_) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),
-        Err(reason) => eprintln!("Failed to run the command. Reason: {}", reason),
+        Err(reason) => eprintln!("Failed to run the command. Reason: {reason}"),
     }
 }

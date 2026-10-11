@@ -1,51 +1,27 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ProcessFailure {
+    #[error("Failed to spawn process.")]
     Spawn,
+    #[error("Failed to await process.")]
     Await,
+    #[error("Failed to execute command. Status: {0}.")]
     CommandExecution(i32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum TranscoderError {
+    #[error("File not found: {0}")]
     FileNotFound(String),
+    #[error("Failed to check file existence: {0}.")]
     CouldNotCheckFileExistence(String),
+    #[error("Invalid command.")]
     InvalidCommand,
+    #[error("Input and output formats are the same.")]
     SameInputAndOutput,
+    #[error("Unsupported operation.")]
     UnsupportedOperation,
+    #[error("Aborted. {0}")]
     AbortTranscoding(String),
 }
-
-impl Display for TranscoderError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TranscoderError::FileNotFound(path) => format!("File not found: {}", path).fmt(f),
-            TranscoderError::CouldNotCheckFileExistence(path) => {
-                format!("Failed to check file existence: {}.", path).fmt(f)
-            }
-            TranscoderError::InvalidCommand => f.write_str("Invalid command."),
-            TranscoderError::SameInputAndOutput => {
-                f.write_str("Input and output formats are the same.")
-            }
-            TranscoderError::AbortTranscoding(reason) => format!("Aborted. {}", reason).fmt(f),
-            TranscoderError::UnsupportedOperation => f.write_str("Unsupported operation."),
-        }
-    }
-}
-
-impl Display for ProcessFailure {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProcessFailure::Await => f.write_str("Failed to await process."),
-            ProcessFailure::Spawn => f.write_str("Failed to spawn process."),
-            ProcessFailure::CommandExecution(status) => {
-                format!("Failed to execute command. Status: {}.", status).fmt(f)
-            }
-        }
-    }
-}
-
-impl Error for TranscoderError {}
-impl Error for ProcessFailure {}

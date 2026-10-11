@@ -46,10 +46,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
     let audio_codec = codecs::get_codec(&input, CodecType::Audio);
     let video_codec = codecs::get_codec(&input, CodecType::Video);
 
-    println!(
-        "The video codecs are: {} (audio) and {} (video).",
-        audio_codec, video_codec
-    );
+    println!("The video codecs are: {audio_codec} (audio) and {video_codec} (video).");
 
     {
         let h264 = VideoCodec::H264.as_str() == video_codec;
@@ -62,7 +59,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
 
         if audio && video && ext {
             let reason = "The file already has recommended codecs and mp4 format.";
-            warn!("{} Do you want to proceed anyway (Y/n)?", reason);
+            warn!("{reason} Do you want to proceed anyway (Y/n)?");
             if user_input::read_input().to_lowercase() == "n" {
                 return Err(TranscoderError::AbortTranscoding(reason.to_owned()).into());
             }
@@ -113,7 +110,7 @@ pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
                 cmd.scale(scale);
             }
             Err(_) => eprintln!("Invalid scale."),
-        };
+        }
     }
     println!("Audio bitrate (e.g. 128)");
     let bitrate = read_input();
@@ -123,7 +120,7 @@ pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
                 cmd.scale(bitrate);
             }
             Err(_) => eprintln!("Invalid bitrate."),
-        };
+        }
     }
     println!("Preset (e.g. medium):");
     let preset = read_input();
@@ -139,7 +136,7 @@ pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
                 cmd.crf(crf);
             }
             Err(_) => eprintln!("Invalid CRF."),
-        };
+        }
     }
     unwrap_ffmpeg_command(cmd.build())
 }
@@ -150,7 +147,7 @@ fn unwrap_ffmpeg_command(
     match cmd {
         Ok(cmd) => Ok(cmd),
         Err(err) => {
-            debug!("{}", err);
+            debug!("{err}");
             Err(InvalidCommand.into())
         }
     }

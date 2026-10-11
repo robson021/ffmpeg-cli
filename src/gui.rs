@@ -57,6 +57,16 @@ impl std::fmt::Display for Operation {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum Field {
+    VideoCodec,
+    AudioCodec,
+    Scale,
+    Bitrate,
+    Preset,
+    Crf,
+}
+
 #[derive(Debug, Clone)]
 enum Message {
     OperationChanged(Operation),
@@ -64,17 +74,13 @@ enum Message {
     BrowseInput,
     InputPicked(Option<String>),
     OutputChanged(String),
-    VideoCodecChanged(String),
-    AudioCodecChanged(String),
-    ScaleChanged(String),
-    BitrateChanged(String),
-    PresetChanged(String),
-    CrfChanged(String),
+    FieldChanged(Field, String),
     Run,
     PollCommand,
     OpenOutputDir,
 }
 
+#[derive(Default)]
 struct App {
     operation: Option<Operation>,
     input: String,
@@ -92,28 +98,14 @@ struct App {
     result_receiver: Option<Receiver<RunEvent>>,
 }
 
-impl Default for App {
-    fn default() -> Self {
+impl App {
+    fn new() -> Self {
         Self {
             operation: Some(Operation::YoutubeOptimized),
-            input: String::new(),
-            output: String::new(),
-            video_codec: String::new(),
-            audio_codec: String::new(),
-            scale: String::new(),
-            bitrate: String::new(),
-            preset: String::new(),
-            crf: String::new(),
-            preview: String::new(),
-            status: String::new(),
-            log: Vec::new(),
-            finished_output_dir: None,
-            result_receiver: None,
+            ..Self::default()
         }
     }
-}
 
-impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::OperationChanged(operation) => {
@@ -149,28 +141,15 @@ impl App {
                 self.output = output;
                 self.refresh_preview();
             }
-            Message::VideoCodecChanged(value) => {
-                self.video_codec = value;
-                self.refresh_preview();
-            }
-            Message::AudioCodecChanged(value) => {
-                self.audio_codec = value;
-                self.refresh_preview();
-            }
-            Message::ScaleChanged(value) => {
-                self.scale = value;
-                self.refresh_preview();
-            }
-            Message::BitrateChanged(value) => {
-                self.bitrate = value;
-                self.refresh_preview();
-            }
-            Message::PresetChanged(value) => {
-                self.preset = value;
-                self.refresh_preview();
-            }
-            Message::CrfChanged(value) => {
-                self.crf = value;
+            Message::FieldChanged(field, value) => {
+                match field {
+                    Field::VideoCodec => self.video_codec = value,
+                    Field::AudioCodec => self.audio_codec = value,
+                    Field::Scale => self.scale = value,
+                    Field::Bitrate => self.bitrate = value,
+                    Field::Preset => self.preset = value,
+                    Field::Crf => self.crf = value,
+                }
                 self.refresh_preview();
             }
             Message::Run => self.start_command(),
@@ -178,7 +157,7 @@ impl App {
             Message::OpenOutputDir => {
                 if let Some(dir) = &self.finished_output_dir {
                     if let Err(error) = open::that(dir) {
-                        self.status = format!("Could not open directory: {}", error);
+                        self.status = format!("Could not open directory: {error}");
                     }
                 }
             }
@@ -223,31 +202,30 @@ impl App {
                     "Video codec",
                     &self.video_codec,
                     "e.g. libx264",
-                    Message::VideoCodecChanged,
+                    |value| Message::FieldChanged(Field::VideoCodec, value),
                 ))
                 .push(labeled_input(
                     "Audio codec",
                     &self.audio_codec,
                     "e.g. aac",
-                    Message::AudioCodecChanged,
+                    |value| Message::FieldChanged(Field::AudioCodec, value),
                 ))
                 .push(row![
-                    labeled_input("Scale", &self.scale, "e.g. 1280", Message::ScaleChanged),
-                    labeled_input(
-                        "Audio bitrate",
-                        &self.bitrate,
-                        "e.g. 320 kbps",
-                        Message::BitrateChanged
-                    ),
+                    labeled_input("Scale", &self.scale, "e.g. 1280", |value| {
+                        Message::FieldChanged(Field::Scale, value)
+                    }),
+                    labeled_input("Audio bitrate", &self.bitrate, "e.g. 320 kbps", |value| {
+                        Message::FieldChanged(Field::Bitrate, value)
+                    }),
                 ])
                 .push(row![
-                    labeled_input(
-                        "Preset",
-                        &self.preset,
-                        "e.g. medium",
-                        Message::PresetChanged
-                    ),
-                    labeled_input("CRF", &self.crf, "e.g. 24", Message::CrfChanged),
+                    labeled_input("Preset", &self.preset, "e.g. medium", |value| {
+                        Message::FieldChanged(Field::Preset, value)
+                    }),
+                    labeled_input("CRF", &self.crf, "e.g. 24", |value| Message::FieldChanged(
+                        Field::Crf,
+                        value
+                    )),
                 ]);
         }
 
@@ -348,7 +326,7 @@ impl App {
                     self.finished_output_dir = Some(output_directory(&self.output));
                     notify_done();
                 }
-                Err(error) => self.status = format!("FFmpeg failed: {}", error),
+                Err(error) => self.status = format!("FFmpeg failed: {error}"),
             }
         }
         iced::widget::operation::snap_to_end(log_id())
@@ -492,7 +470,7 @@ fn notify_done() {
             .body("FFmpeg finished successfully.")
             .show()
         {
-            log::warn!("Could not show system notification: {}", error);
+            log::warn!("Could not show system notification: {error}");
         }
     });
 }
@@ -512,7 +490,7 @@ fn parse_optional(value: &str, name: &str) -> Result<Option<i16>, String> {
         .trim()
         .parse::<i16>()
         .map(Some)
-        .map_err(|_| format!("{} must be a number between -32768 and 32767.", name))
+        .map_err(|_| format!("{name} must be a number between -32768 and 32767."))
 }
 
 fn suggest_output(input: &str, operation: Operation) -> String {
@@ -529,7 +507,7 @@ fn suggest_output(input: &str, operation: Operation) -> String {
 }
 
 pub fn run() -> iced::Result {
-    iced::application(App::default, App::update, App::view)
+    iced::application(App::new, App::update, App::view)
         .title("FFmpeg CLI")
         .theme(|_: &App| Theme::Dark)
         .subscription(App::subscription)

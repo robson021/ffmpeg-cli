@@ -8,15 +8,15 @@ use std::time::Instant;
 
 pub fn run_command(command: &FfmpegCommand) -> Result<(), ProcessFailure> {
     let command = command.as_cmd_string();
-    println!("Running command: {:?}", command);
+    println!("Running command: {command:?}");
 
     let start = Instant::now();
     let status_code = execute_and_wait(command)?;
     if status_code != 0 {
         return Err(ProcessFailure::CommandExecution(status_code));
-    };
+    }
     let time = start.elapsed().as_secs();
-    println!("Task executed successfully! Time elapsed: {}s", time);
+    println!("Task executed successfully! Time elapsed: {time}s");
     Ok(())
 }
 
@@ -27,7 +27,7 @@ pub fn run_command_with_output(
     on_line: &dyn Fn(String),
 ) -> Result<(), ProcessFailure> {
     let command = command.as_cmd_string();
-    on_line(format!("$ {}", command));
+    on_line(format!("$ {command}"));
 
     let (program, arg) = get_system_specific_program_and_arg();
     let reader = duct::cmd(program, [arg, command.as_str()])
@@ -96,7 +96,7 @@ pub fn get_supported_formats() -> HashSet<String> {
             continue;
         }
         let line = line[1];
-        formats.push(line.to_owned())
+        formats.push(line.to_owned());
     }
     let set: HashSet<String> = formats.into_iter().collect();
     debug!("Found: {} supported formats", set.len());
@@ -113,7 +113,7 @@ pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
 
     let std_out = String::from_utf8_lossy(&output.stdout);
     let lines = std_out.lines().collect::<Vec<&str>>();
-    lines.into_iter().map(|line| line.to_owned()).collect()
+    lines.into_iter().map(ToOwned::to_owned).collect()
 }
 
 pub fn get_ffmpeg_version() -> String {
