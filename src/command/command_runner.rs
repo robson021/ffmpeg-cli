@@ -2,6 +2,7 @@ use crate::command::ffmpeg_command::FfmpegCommand;
 use crate::error::ProcessFailure;
 use log::debug;
 use std::collections::HashSet;
+use std::io::{BufRead, BufReader};
 use std::process::Command;
 use std::time::Instant;
 
@@ -17,6 +18,41 @@ pub fn run_command(command: &FfmpegCommand) -> Result<(), ProcessFailure> {
     let time = start.elapsed().as_secs();
     println!("Task executed successfully! Time elapsed: {}s", time);
     Ok(())
+}
+
+/// Runs the command, forwarding every line of its output (stdout and stderr) to `on_line`.
+/// FFmpeg's progress updates end with '\r', so output is split on '\r' as well as '\n'.
+pub fn run_command_with_output(
+    command: &FfmpegCommand,
+    on_line: &dyn Fn(String),
+) -> Result<(), ProcessFailure> {
+    let command = command.as_cmd_string();
+    on_line(format!("$ {}", command));
+
+    let (program, arg) = get_system_specific_program_and_arg();
+    let reader = duct::cmd(program, [arg, command.as_str()])
+        .stdin_null()
+        .stderr_to_stdout()
+        .unchecked()
+        .reader()
+        .map_err(|_| ProcessFailure::Spawn)?;
+
+    for chunk in BufReader::new(&reader).split(b'\r') {
+        let chunk = chunk.map_err(|_| ProcessFailure::Await)?;
+        String::from_utf8_lossy(&chunk)
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .for_each(|line| on_line(line.to_owned()));
+    }
+
+    match reader.try_wait() {
+        Ok(Some(output)) => match output.status.code() {
+            Some(0) => Ok(()),
+            Some(code) => Err(ProcessFailure::CommandExecution(code)),
+            None => Err(ProcessFailure::Await),
+        },
+        _ => Err(ProcessFailure::Await),
+    }
 }
 
 #[inline]

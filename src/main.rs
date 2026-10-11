@@ -8,6 +8,7 @@ use std::error::Error;
 
 mod command;
 mod error;
+mod gui;
 mod logger_config;
 mod media;
 mod string_utils;
@@ -24,6 +25,13 @@ fn print_menu() {
 
 fn main() {
     logger_config::setup_logger();
+    if std::env::args().any(|arg| arg == "--gui") {
+        if let Err(error) = gui::run() {
+            eprintln!("Failed to start GUI: {}", error);
+        }
+        return;
+    }
+
     println!("Welcome to ffmpeg-cli!");
     println!("Installed ffmpeg version is: {}", get_ffmpeg_version());
     loop {
