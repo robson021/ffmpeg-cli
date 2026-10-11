@@ -242,35 +242,36 @@ impl App {
                 .style(input_like_box),
             )
             .push(
-                button(text(if self.result_receiver.is_some() {
-                    "FFmpeg is running..."
-                } else {
-                    "Run FFmpeg"
-                }))
-                .on_press_maybe(if self.result_receiver.is_none() {
-                    Some(Message::Run)
-                } else {
-                    None
-                }),
+                container(
+                    button(text(if self.result_receiver.is_some() {
+                        "FFmpeg is running..."
+                    } else {
+                        "Run FFmpeg"
+                    }))
+                    .on_press_maybe(if self.result_receiver.is_none() {
+                        Some(Message::Run)
+                    } else {
+                        None
+                    }),
+                )
+                .center_x(Length::Fill),
             );
 
         if !self.status.is_empty() {
             content = content.push(text(&self.status));
         }
 
-        if !self.log.is_empty() {
-            content = content.push(text("Output").size(20)).push(
-                container(
-                    scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(13))
-                        .id(log_id())
-                        .width(Length::Fill),
-                )
-                .padding(12)
-                .height(260)
-                .width(Length::Fill)
-                .style(container::bordered_box),
-            );
-        }
+        content = content.push(text("Logs output:").size(20)).push(
+            container(
+                scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(13))
+                    .id(log_id())
+                    .width(Length::Fill),
+            )
+            .padding(12)
+            .height(260)
+            .width(Length::Fill)
+            .style(container::bordered_box),
+        );
 
         if self.finished_output_dir.is_some() {
             content = content.push(
