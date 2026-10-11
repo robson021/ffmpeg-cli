@@ -1,12 +1,13 @@
+use anyhow::{bail, Result};
 use log::debug;
 
-pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, &'static str> {
+pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String> {
     let extension = find_file_extension(path)?;
     let new_path = path.replace(&extension, new_extension);
     Ok(new_path)
 }
 
-pub fn find_file_extension(path: &str) -> Result<String, &'static str> {
+pub fn find_file_extension(path: &str) -> Result<String> {
     match last_index_of_char(path, '.') {
         Some(idx) => {
             let ext = &path[idx..];
@@ -15,7 +16,7 @@ pub fn find_file_extension(path: &str) -> Result<String, &'static str> {
         }
         None => {
             debug!("Found no extension for the path: {path}");
-            Err("No extension found.")
+            bail!("No extension found.")
         }
     }
 }

@@ -1,18 +1,16 @@
 use crate::command::ffmpeg_command;
 use crate::command::ffmpeg_command::{CommandType, FfmpegCommand, FfmpegCommandBuilderError};
-use crate::error::TranscoderError;
-use crate::error::TranscoderError::InvalidCommand;
 use crate::media::codecs;
 use crate::media::codecs::{AudioCodec, CodecAsString, CodecType, VideoCodec};
 use crate::{string_utils, user_input};
-use log::{debug, warn};
-use std::error::Error;
+use anyhow::{bail, Context, Result};
+use log::warn;
 
-pub fn convert() -> Result<FfmpegCommand, Box<dyn Error>> {
+pub fn convert() -> Result<FfmpegCommand> {
     let (input, output, format) = user_input::ask_input_and_output_file()?;
 
     if input.ends_with(&format) {
-        return Err(TranscoderError::SameInputAndOutput.into());
+        bail!("Input and output formats are the same.");
     }
 
     let cmd = ffmpeg_command::builder()
@@ -26,7 +24,7 @@ pub fn convert() -> Result<FfmpegCommand, Box<dyn Error>> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn compress() -> Result<FfmpegCommand, Box<dyn Error>> {
+pub fn compress() -> Result<FfmpegCommand> {
     let input = user_input::ask_input_file()?;
     let output = string_utils::change_file_extension(&input, "_compressed.mp4")?;
 
@@ -41,7 +39,7 @@ pub fn compress() -> Result<FfmpegCommand, Box<dyn Error>> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
+pub fn youtube_optimized() -> Result<FfmpegCommand> {
     let input = user_input::ask_input_file()?;
     let audio_codec = codecs::get_codec(&input, CodecType::Audio);
     let video_codec = codecs::get_codec(&input, CodecType::Video);
@@ -61,7 +59,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
             let reason = "The file already has recommended codecs and mp4 format.";
             warn!("{reason} Do you want to proceed anyway (Y/n)?");
             if user_input::read_input().to_lowercase() == "n" {
-                return Err(TranscoderError::AbortTranscoding(reason.to_owned()).into());
+                bail!("Aborted. {reason}");
             }
         }
     }
@@ -79,7 +77,7 @@ pub fn youtube_optimized() -> Result<FfmpegCommand, Box<dyn Error>> {
     unwrap_ffmpeg_command(cmd)
 }
 
-pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
+pub fn multi_task() -> Result<FfmpegCommand> {
     let (input, output, _) = user_input::ask_input_and_output_file()?;
 
     let read_input = user_input::read_input;
@@ -143,12 +141,6 @@ pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
 
 fn unwrap_ffmpeg_command(
     cmd: Result<FfmpegCommand, FfmpegCommandBuilderError>,
-) -> Result<FfmpegCommand, Box<dyn Error>> {
-    match cmd {
-        Ok(cmd) => Ok(cmd),
-        Err(err) => {
-            debug!("{err}");
-            Err(InvalidCommand.into())
-        }
-    }
+) -> Result<FfmpegCommand> {
+    cmd.context("Invalid command.")
 }

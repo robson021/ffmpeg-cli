@@ -407,7 +407,7 @@ impl App {
             let result = command_runner::run_command_with_output(&command, &|line| {
                 let _ = sender.send(RunEvent::Output(line));
             })
-            .map_err(|error| error.to_string());
+            .map_err(|error| format!("{error:#}"));
             let _ = sender.send(RunEvent::Finished(result));
         });
     }

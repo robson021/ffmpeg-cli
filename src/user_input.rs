@@ -1,8 +1,7 @@
-use crate::error::TranscoderError;
 use crate::media::video_check;
 use crate::string_utils;
+use anyhow::{ensure, Context, Result};
 use log::debug;
-use std::error::Error;
 use std::path::Path;
 
 pub fn read_input() -> String {
@@ -13,7 +12,7 @@ pub fn read_input() -> String {
     input.trim().to_owned()
 }
 
-pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn Error>> {
+pub fn ask_input_and_output_file() -> Result<(String, String, String)> {
     let input = ask_input_file()?;
     let format = ask_output_format()?;
     let format = ".".to_owned() + &format;
@@ -22,27 +21,20 @@ pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn E
     Ok((input, output, format))
 }
 
-pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
+pub fn ask_input_file() -> Result<String> {
     println!("Provide video path (e.g. /some/directory/video.mp4):");
     let path = read_input();
-    let file = match Path::new(&path).try_exists() {
-        Ok(exists) => match exists {
-            true => {
-                debug!("File exists: {path}");
-                Ok(path)
-            }
-            false => Err(TranscoderError::FileNotFound(path).into()),
-        },
-        Err(_) => Err(TranscoderError::CouldNotCheckFileExistence(path).into()),
-    };
-    file
+    let exists = Path::new(&path)
+        .try_exists()
+        .with_context(|| format!("Failed to check file existence: {path}."))?;
+    ensure!(exists, "File not found: {path}");
+    debug!("File exists: {path}");
+    Ok(path)
 }
 
-fn ask_output_format() -> Result<String, &'static str> {
+fn ask_output_format() -> Result<String> {
     println!("Provide output format (e.g. mp4):");
     let format = read_input();
-    match video_check::has_valid_extension(&format) {
-        true => Ok(format),
-        false => Err("Invalid format."),
-    }
+    ensure!(video_check::has_valid_extension(&format), "Invalid format.");
+    Ok(format)
 }
