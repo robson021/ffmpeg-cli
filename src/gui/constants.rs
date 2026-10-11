@@ -17,6 +17,9 @@ pub const LOG_HEIGHT: f32 = 260.0;
 pub const LOG_FONT_SIZE: u32 = 13;
 pub const POLL_INTERVAL: Duration = Duration::from_millis(150);
 pub const BLINK_TICK_INTERVAL: Duration = Duration::from_millis(50);
+pub const COPY_BUTTON_TEXT_SIZE: u32 = 12;
+pub const COPY_BUTTON_PADDING: f32 = 4.0;
+pub const COPY_BUTTON_MARGIN: f32 = 6.0;
 pub const WINDOW_WIDTH: f32 = 1000.0;
 pub const WINDOW_HEIGHT: f32 = 800.0;
 

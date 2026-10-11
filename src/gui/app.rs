@@ -1,9 +1,11 @@
 use super::constants::*;
-use super::system::{notify_done, pick_file};
+use super::system::{copy_to_clipboard, notify_done, pick_file};
 use crate::command::command_form::{CommandForm, FormField};
 use crate::command::command_runner::RunEvent;
 use crate::command::ffmpeg_command::CommandType;
-use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
+use iced::widget::{
+    button, column, container, pick_list, row, scrollable, stack, text, text_input,
+};
 use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
@@ -23,6 +25,7 @@ enum Message {
     PollCommand,
     BlinkTick,
     OpenOutputDir,
+    CopyPreview,
 }
 
 #[derive(Default)]
@@ -83,6 +86,11 @@ impl App {
                     .is_some_and(|until| Instant::now() >= until)
                 {
                     self.blink_until = None;
+                }
+            }
+            Message::CopyPreview => {
+                if !self.preview.is_empty() {
+                    return copy_to_clipboard(self.preview.clone());
                 }
             }
             Message::OpenOutputDir => {
@@ -168,7 +176,7 @@ impl App {
 
         content = content
             .push(text("Command preview:").size(LABEL_SIZE))
-            .push(
+            .push(stack![
                 container(text(if self.preview.is_empty() {
                     "Choose an operation and provide input and output paths.".to_owned()
                 } else {
@@ -177,7 +185,15 @@ impl App {
                 .padding(BOX_PADDING)
                 .width(Length::Fill)
                 .style(container::bordered_box),
-            )
+                container(
+                    button(text("Copy").size(COPY_BUTTON_TEXT_SIZE))
+                        .padding(COPY_BUTTON_PADDING)
+                        .on_press_maybe((!self.preview.is_empty()).then_some(Message::CopyPreview)),
+                )
+                .padding(COPY_BUTTON_MARGIN)
+                .width(Length::Fill)
+                .align_x(Alignment::End),
+            ])
             .push(
                 container(
                     button(text(if self.result_receiver.is_some() {

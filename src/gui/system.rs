@@ -1,5 +1,6 @@
-const SUPPORTED_EXT: &[&str; 8] =
-    &["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv", "m4v"];
+use iced::Task;
+
+const SUPPORTED_EXT: &[&str; 8] = &["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv", "m4v"];
 
 pub async fn pick_file() -> Option<String> {
     rfd::AsyncFileDialog::new()
@@ -21,4 +22,8 @@ pub fn notify_done() {
             log::warn!("Could not show system notification: {error}");
         }
     });
+}
+
+pub fn copy_to_clipboard<T: Send + 'static>(content: String) -> Task<T> {
+    iced::clipboard::write(content)
 }
