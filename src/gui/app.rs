@@ -10,7 +10,6 @@ use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::sync::LazyLock;
-use std::time::Instant;
 use strum::VariantArray;
 
 #[derive(Debug, Clone)]
@@ -23,7 +22,6 @@ enum Message {
     FieldChanged(FormField, String),
     Run,
     PollCommand,
-    BlinkTick,
     OpenOutputDir,
     CopyPreview,
 }
@@ -33,7 +31,6 @@ struct App {
     form: CommandForm,
     preview: String,
     status: String,
-    blink_until: Option<Instant>,
     log: Vec<String>,
     finished_output_dir: Option<PathBuf>,
     result_receiver: Option<Receiver<RunEvent>>,
@@ -80,14 +77,6 @@ impl App {
             }
             Message::Run => self.start_command(),
             Message::PollCommand => return self.poll_command(),
-            Message::BlinkTick => {
-                if self
-                    .blink_until
-                    .is_some_and(|until| Instant::now() >= until)
-                {
-                    self.blink_until = None;
-                }
-            }
             Message::CopyPreview => {
                 if !self.preview.is_empty() {
                     return copy_to_clipboard(self.preview.clone());
@@ -228,12 +217,11 @@ impl App {
 
         if !self.status.is_empty() {
             let succeeded = self.finished_output_dir.is_some();
-            let blinking = self.blink_until.is_some();
             content = content.push(
                 container(text(&self.status))
                     .padding(BOX_PADDING)
                     .width(Length::Fill)
-                    .style(move |theme: &Theme| status_box(theme, succeeded, blinking)),
+                    .style(move |theme: &Theme| status_box(theme, succeeded)),
             );
         }
 
@@ -255,17 +243,11 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let poll = if self.result_receiver.is_some() {
+        if self.result_receiver.is_some() {
             iced::time::every(POLL_INTERVAL).map(|_| Message::PollCommand)
         } else {
             Subscription::none()
-        };
-        let blink = if self.blink_until.is_some() {
-            iced::time::every(BLINK_TICK_INTERVAL).map(|_| Message::BlinkTick)
-        } else {
-            Subscription::none()
-        };
-        Subscription::batch([poll, blink])
+        }
     }
 
     fn poll_command(&mut self) -> Task<Message> {
@@ -295,7 +277,6 @@ impl App {
                 Ok(()) => {
                     self.status = "FFmpeg completed successfully.".to_owned();
                     self.finished_output_dir = Some(self.form.output_directory());
-                    self.blink_until = Some(Instant::now() + BLINK_DURATION);
                     notify_done();
                 }
                 Err(error) => self.status = format!("FFmpeg failed: {error}"),
@@ -317,7 +298,6 @@ impl App {
                 self.status = "Running FFmpeg...".to_owned();
                 self.log.clear();
                 self.finished_output_dir = None;
-                self.blink_until = None;
                 self.result_receiver = Some(receiver);
             }
             Err(error) => self.status = error,
@@ -352,15 +332,11 @@ fn resize_window_height(delta: f32) -> Task<Message> {
     })
 }
 
-fn status_box(theme: &Theme, succeeded: bool, blinking: bool) -> container::Style {
+fn status_box(theme: &Theme, succeeded: bool) -> container::Style {
     let mut style = container::bordered_box(theme);
     if succeeded {
         let success = theme.extended_palette().success.strong;
         style.border = style.border.color(success.color).width(2);
-        if blinking {
-            style.background = Some(success.color.into());
-            style.text_color = Some(success.text);
-        }
     }
     style
 }
