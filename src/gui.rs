@@ -12,6 +12,19 @@ const CUSTOM_FIELDS_HEIGHT: f32 = 232.0;
 const MIN_WINDOW_HEIGHT: f32 = 400.0;
 const BLINK_DURATION: Duration = Duration::from_millis(700);
 const MAX_LOG_LINES: usize = 500;
+const LABEL_SIZE: u32 = 20;
+const LABEL_WIDTH: f32 = 120.0;
+const INPUT_PADDING: f32 = 10.0;
+const ROW_SPACING: f32 = 12.0;
+const BOX_PADDING: f32 = ROW_SPACING;
+const SECTION_SPACING: f32 = 16.0;
+const CONTENT_PADDING: f32 = 24.0;
+const LOG_HEIGHT: f32 = 260.0;
+const LOG_FONT_SIZE: u32 = 13;
+const POLL_INTERVAL: Duration = Duration::from_millis(150);
+const BLINK_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const WINDOW_WIDTH: f32 = 1000.0;
+const WINDOW_HEIGHT: f32 = 800.0;
 
 fn log_id() -> iced::widget::Id {
     iced::widget::Id::new("ffmpeg-log")
@@ -112,20 +125,18 @@ impl App {
         .width(Length::Fill);
 
         let mut content = column![
-            text("FFmpeg CLI").size(30),
-            text("Build and run FFmpeg commands").size(16),
-            row![text("Operation").width(120), operation]
-                .spacing(12)
+            row![text("Operation").width(LABEL_WIDTH), operation]
+                .spacing(ROW_SPACING)
                 .align_y(Alignment::Center),
             row![
-                text("Input file").width(120),
+                text("Input file").width(LABEL_WIDTH),
                 text_input("Path to a video file", &self.form.input)
                     .on_input(Message::InputChanged)
-                    .padding(10)
+                    .padding(INPUT_PADDING)
                     .width(Length::Fill),
                 button("Browse...").on_press(Message::BrowseInput),
             ]
-            .spacing(12)
+            .spacing(ROW_SPACING)
             .align_y(Alignment::Center),
             labeled_input(
                 "Output file",
@@ -134,7 +145,7 @@ impl App {
                 Message::OutputChanged
             ),
         ]
-        .spacing(16)
+        .spacing(SECTION_SPACING)
         .width(Length::Fill);
 
         if self.form.is_custom() {
@@ -151,36 +162,38 @@ impl App {
                     "e.g. aac",
                     |value| Message::FieldChanged(FormField::AudioCodec, value),
                 ))
-                .push(row![
-                    labeled_input("Scale", &self.form.scale, "e.g. 1280", |value| {
-                        Message::FieldChanged(FormField::Scale, value)
-                    }),
-                    labeled_input(
-                        "Audio bitrate",
-                        &self.form.bitrate,
-                        "e.g. 320 kbps",
-                        |value| { Message::FieldChanged(FormField::Bitrate, value) }
-                    ),
-                ])
-                .push(row![
-                    labeled_input("Preset", &self.form.preset, "e.g. medium", |value| {
-                        Message::FieldChanged(FormField::Preset, value)
-                    }),
-                    labeled_input("CRF", &self.form.crf, "e.g. 24", |value| {
-                        Message::FieldChanged(FormField::Crf, value)
-                    }),
-                ]);
+                .push(labeled_input(
+                    "Scale",
+                    &self.form.scale,
+                    "e.g. 1280",
+                    |value| Message::FieldChanged(FormField::Scale, value),
+                ))
+                .push(labeled_input(
+                    "Audio bitrate",
+                    &self.form.bitrate,
+                    "e.g. 320 kbps",
+                    |value| Message::FieldChanged(FormField::Bitrate, value),
+                ))
+                .push(labeled_input("CRF", &self.form.crf, "e.g. 24", |value| {
+                    Message::FieldChanged(FormField::Crf, value)
+                }))
+                .push(labeled_input(
+                    "Preset",
+                    &self.form.preset,
+                    "e.g. medium",
+                    |value| Message::FieldChanged(FormField::Preset, value),
+                ));
         }
 
         content = content
-            .push(text("Command preview").size(20))
+            .push(text("Command preview:").size(LABEL_SIZE))
             .push(
                 container(text(if self.preview.is_empty() {
                     "Choose an operation and provide input and output paths.".to_owned()
                 } else {
                     self.preview.clone()
                 }))
-                .padding(12)
+                .padding(BOX_PADDING)
                 .width(Length::Fill)
                 .style(container::bordered_box),
             )
@@ -200,14 +213,14 @@ impl App {
                 .center_x(Length::Fill),
             );
 
-        content = content.push(text("Logs output:").size(20)).push(
+        content = content.push(text("Logs output:").size(LABEL_SIZE)).push(
             container(
-                scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(13))
+                scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(LOG_FONT_SIZE))
                     .id(log_id())
                     .width(Length::Fill),
             )
-            .padding(12)
-            .height(260)
+            .padding(BOX_PADDING)
+            .height(LOG_HEIGHT)
             .width(Length::Fill)
             .style(container::bordered_box),
         );
@@ -217,7 +230,7 @@ impl App {
             let blinking = self.blink_until.is_some();
             content = content.push(
                 container(text(&self.status))
-                    .padding(12)
+                    .padding(BOX_PADDING)
                     .width(Length::Fill)
                     .style(move |theme: &Theme| status_box(theme, succeeded, blinking)),
             );
@@ -234,7 +247,7 @@ impl App {
             );
         }
 
-        container(scrollable(content.padding(24)))
+        container(scrollable(content.padding(CONTENT_PADDING)))
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
@@ -242,12 +255,12 @@ impl App {
 
     fn subscription(&self) -> Subscription<Message> {
         let poll = if self.result_receiver.is_some() {
-            iced::time::every(Duration::from_millis(150)).map(|_| Message::PollCommand)
+            iced::time::every(POLL_INTERVAL).map(|_| Message::PollCommand)
         } else {
             Subscription::none()
         };
         let blink = if self.blink_until.is_some() {
-            iced::time::every(Duration::from_millis(50)).map(|_| Message::BlinkTick)
+            iced::time::every(BLINK_TICK_INTERVAL).map(|_| Message::BlinkTick)
         } else {
             Subscription::none()
         };
@@ -318,13 +331,13 @@ fn labeled_input<'a>(
     on_input: impl Fn(String) -> Message + 'a,
 ) -> Element<'a, Message> {
     row![
-        text(label).width(120),
+        text(label).width(LABEL_WIDTH),
         text_input(placeholder, value)
             .on_input(on_input)
-            .padding(10)
+            .padding(INPUT_PADDING)
             .width(Length::Fill),
     ]
-    .spacing(12)
+    .spacing(ROW_SPACING)
     .align_y(Alignment::Center)
     .into()
 }
@@ -381,6 +394,6 @@ pub fn run() -> iced::Result {
         .title("FFmpeg CLI")
         .theme(|_: &App| Theme::Dark)
         .subscription(App::subscription)
-        .window_size(iced::Size::new(1000.0, 930.0))
+        .window_size(iced::Size::new(WINDOW_WIDTH, WINDOW_HEIGHT))
         .run()
 }
