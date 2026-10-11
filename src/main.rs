@@ -39,10 +39,11 @@ impl AppMode {
 fn main() {
     logger_config::setup_logger();
     match AppMode::from_args() {
-        AppMode::Gui => match gui::run() {
-            Err(error) => eprintln!("Failed to start GUI: {error}"),
-            _ => debug!("GUI exited successfully."),
-        },
+        AppMode::Gui => {
+            if let Err(error) = gui::run() {
+                eprintln!("Failed to start GUI: {error}");
+            }
+        }
         AppMode::Cmd => run_cmd_mode(),
     }
 }
@@ -77,7 +78,7 @@ fn handle_menu_option(option: i32) {
 
 fn run_cmd(cmd: &FfmpegCommand) {
     match command_runner::run_command(cmd) {
-        Ok(_) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),
+        Ok(()) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),
         Err(reason) => eprintln!("Failed to run the command. Reason: {reason:#}"),
     }
 }

@@ -69,48 +69,45 @@ fn get_system_specific_program_and_arg() -> (&'static str, &'static str) {
 }
 
 pub fn get_supported_formats() -> HashSet<String> {
-    let lines = execute_cmd_get_lines("ffmpeg -formats")
-        .into_iter()
-        .filter(|line| {
-            line.contains(" D ")
-                || line.contains(" E ")
-                || line.contains(" DE ")
-                || line.contains(" ED ")
-        });
-    let mut formats: Vec<String> = Vec::new();
-
-    for line in lines {
-        let line = line.split_whitespace().collect::<Vec<_>>();
-        if line.len() < 2 {
+    let mut formats = HashSet::new();
+    for line in execute_cmd_get_lines("ffmpeg -formats") {
+        let is_demuxer_or_muxer = line.contains(" D ")
+            || line.contains(" E ")
+            || line.contains(" DE ")
+            || line.contains(" ED ");
+        if !is_demuxer_or_muxer {
             continue;
         }
-        let line = line[1];
-        formats.push(line.to_owned());
+        if let Some(format) = line.split_whitespace().nth(1) {
+            formats.insert(format.to_owned());
+        }
     }
-    let set: HashSet<String> = formats.into_iter().collect();
-    debug!("Found: {} supported formats", set.len());
-    set
+    debug!("Found: {} supported formats", formats.len());
+    formats
 }
 
 pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
-    let program_arg = get_system_specific_program_and_arg();
-    let output = Command::new(program_arg.0)
-        .arg(program_arg.1)
+    let (program, arg) = get_system_specific_program_and_arg();
+    let output = Command::new(program)
+        .arg(arg)
         .arg(cmd)
         .output()
         .expect("Failed to execute command. Is ffmpeg installed?");
 
-    let std_out = String::from_utf8_lossy(&output.stdout);
-    let lines = std_out.lines().collect::<Vec<&str>>();
-    lines.into_iter().map(ToOwned::to_owned).collect()
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().map(str::to_owned).collect()
 }
 
 pub fn get_ffmpeg_version() -> String {
-    let v = execute_cmd_get_lines("ffmpeg -version")[0].to_owned();
-    let prefix = "ffmpeg version ";
-    if !v.contains(prefix) {
-        return "Could not find ffmpeg version. Is ffmpeg installed?".to_owned();
+    let lines = execute_cmd_get_lines("ffmpeg -version");
+    let first_line = lines.first().map(String::as_str).unwrap_or_default();
+
+    match first_line.strip_prefix("ffmpeg version ") {
+        Some(rest) => rest
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .to_owned(),
+        None => "Could not find ffmpeg version. Is ffmpeg installed?".to_owned(),
     }
-    let idx = prefix.len();
-    v.as_str()[idx..idx + 4].trim().to_owned()
 }

@@ -1,4 +1,4 @@
-use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
+use crate::media::codecs::{AudioCodec, VideoCodec};
 use crate::string_utils;
 use strum::{Display, VariantArray};
 
@@ -16,7 +16,11 @@ pub enum CommandType {
 }
 
 impl CommandType {
-    pub fn output_suffix(self) -> &'static str {
+    pub fn suggest_output(self, input: &str) -> anyhow::Result<String> {
+        string_utils::change_file_extension(input, self.output_suffix())
+    }
+
+    fn output_suffix(self) -> &'static str {
         match self {
             Self::ConvertFormat => ".mp4",
             Self::Compress => "_compressed.mp4",
@@ -46,7 +50,7 @@ pub fn builder() -> FfmpegCommandBuilder {
         .audio_bitrate(None)
         .preset(None)
         .crf(None)
-        .to_owned()
+        .clone()
 }
 
 impl FfmpegCommand {
@@ -54,53 +58,55 @@ impl FfmpegCommand {
         let (input, output) =
             string_utils::add_quotes_if_whitespace_present(&self.input_file, &self.output_file);
 
-        let mut cmd = String::from("ffmpeg -i ");
-        cmd.push_str(&input);
-
-        cmd.push_str(&self.codecs_args());
-
-        match self.command_type {
-            CommandType::ConvertFormat => { /* skip */ }
-            CommandType::Compress => {
-                cmd.push_str(r#" -vf "scale=1280:-2" -preset veryslow -crf 24"#);
-            }
-            CommandType::YoutubeOptimized => {
-                cmd.push_str(" -crf 23 -preset medium -b:a 320k -qscale 0");
-            }
-            CommandType::MultiTask => {
-                if let Some(v) = &self.scale {
-                    cmd.push_str(format!(r#" -vf "scale={v}-2""#).as_str());
-                }
-                if let Some(v) = &self.audio_bitrate {
-                    cmd.push_str(format!(" -b:a {v}k").as_str());
-                }
-                if let Some(v) = &self.preset {
-                    cmd.push_str(format!(" -preset {v}").as_str());
-                }
-                if let Some(v) = &self.crf {
-                    cmd.push_str(format!(" -crf {v}").as_str());
-                }
-            }
-        }
-        cmd.push(' ');
-        cmd.push_str(&output);
-        cmd
+        let mut args = vec!["ffmpeg".to_owned(), "-i".to_owned(), input];
+        args.extend(self.codec_args());
+        args.extend(self.quality_args());
+        args.push(output);
+        args.join(" ")
     }
 
-    fn codecs_args(&self) -> String {
-        let mut cmd = String::new();
-        match self.command_type {
-            CommandType::ConvertFormat => { /* skip additional params */ }
-            _ => {
-                let video_codec = self.video_codec.as_str().to_lowercase();
-                let audio_codec = self.audio_codec.as_str().to_lowercase();
-                cmd.push_str(" -c:v ");
-                cmd.push_str(&video_codec);
-                cmd.push_str(" -c:a ");
-                cmd.push_str(&audio_codec);
-            }
+    fn codec_args(&self) -> Vec<String> {
+        if self.command_type == CommandType::ConvertFormat {
+            return Vec::new();
         }
-        cmd
+        let video_codec = self.video_codec.to_string().to_lowercase();
+        let audio_codec = self.audio_codec.to_string().to_lowercase();
+        vec![
+            "-c:v".to_owned(),
+            video_codec,
+            "-c:a".to_owned(),
+            audio_codec,
+        ]
+    }
+
+    fn quality_args(&self) -> Vec<String> {
+        match self.command_type {
+            CommandType::ConvertFormat => Vec::new(),
+            CommandType::Compress => {
+                vec![r#"-vf "scale=1280:-2" -preset veryslow -crf 24"#.to_owned()]
+            }
+            CommandType::YoutubeOptimized => {
+                vec!["-crf 23 -preset medium -b:a 320k -qscale 0".to_owned()]
+            }
+            CommandType::MultiTask => self.custom_args(),
+        }
+    }
+
+    fn custom_args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+        if let Some(scale) = self.scale {
+            args.push(format!(r#"-vf "scale={scale}-2""#));
+        }
+        if let Some(bitrate) = self.audio_bitrate {
+            args.push(format!("-b:a {bitrate}k"));
+        }
+        if let Some(preset) = &self.preset {
+            args.push(format!("-preset {preset}"));
+        }
+        if let Some(crf) = self.crf {
+            args.push(format!("-crf {crf}"));
+        }
+        args
     }
 }
 

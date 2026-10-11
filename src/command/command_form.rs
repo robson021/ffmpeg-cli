@@ -1,7 +1,6 @@
 use crate::command::command_runner::{self, RunEvent};
 use crate::command::ffmpeg_command::{self, CommandType, FfmpegCommand};
 use crate::media::codecs::{AudioCodec, VideoCodec};
-use crate::string_utils;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 
@@ -76,8 +75,7 @@ impl CommandForm {
         self.output = if self.input.trim().is_empty() {
             String::new()
         } else {
-            string_utils::change_file_extension(&self.input, operation.output_suffix())
-                .unwrap_or_default()
+            operation.suggest_output(&self.input).unwrap_or_default()
         };
     }
 
@@ -101,7 +99,7 @@ impl CommandForm {
             builder
                 .scale(parse_optional(&self.scale, "scale")?)
                 .audio_bitrate(parse_optional(&self.bitrate, "audio bitrate")?)
-                .preset(Some(self.preset.trim().to_owned()).filter(|preset| !preset.is_empty()))
+                .preset(parse_preset(&self.preset))
                 .crf(parse_optional(&self.crf, "CRF")?);
         }
 
@@ -143,20 +141,30 @@ impl CommandForm {
 }
 
 fn or_default(value: &str, default: &str) -> String {
+    let value = value.trim();
     if value.is_empty() {
         default.to_owned()
     } else {
-        value.trim().to_owned()
+        value.to_owned()
+    }
+}
+
+fn parse_preset(value: &str) -> Option<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_owned())
     }
 }
 
 fn parse_optional(value: &str, name: &str) -> Result<Option<i16>, String> {
-    if value.trim().is_empty() {
+    let value = value.trim();
+    if value.is_empty() {
         return Ok(None);
     }
-    value
-        .trim()
-        .parse::<i16>()
-        .map(Some)
-        .map_err(|_| format!("{name} must be a number between -32768 and 32767."))
+    match value.parse::<i16>() {
+        Ok(number) => Ok(Some(number)),
+        Err(_) => Err(format!("{name} must be a number between -32768 and 32767.")),
+    }
 }
