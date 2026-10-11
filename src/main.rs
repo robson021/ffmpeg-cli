@@ -1,29 +1,53 @@
 use crate::command::command_runner;
 use crate::command::command_runner::get_ffmpeg_version;
 use crate::command::ffmpeg_command::FfmpegCommand;
-use crate::error::TranscoderError;
 use crate::media::transcoder;
+use anyhow::{anyhow, Result};
 use log::debug;
-use std::error::Error;
 
 mod command;
-mod error;
+mod gui;
 mod logger_config;
 mod media;
 mod string_utils;
 mod user_input;
 
 fn print_menu() {
-    println!("\nChose an option:");
+    println!("\nChoose an option:");
     println!("1. Convert format (e.g. avi -> mp4).");
     println!("2. Compress video.");
     println!("3. Complex command.");
-    println!("4. Convert into Youtube optimized format.");
+    println!("4. Convert into YouTube optimized format.");
     println!("0. Exit program.");
+}
+
+enum AppMode {
+    Cmd,
+    Gui,
+}
+
+impl AppMode {
+    fn from_args() -> Self {
+        if std::env::args().any(|arg| arg == "--cmd") {
+            Self::Cmd
+        } else {
+            Self::Gui
+        }
+    }
 }
 
 fn main() {
     logger_config::setup_logger();
+    match AppMode::from_args() {
+        AppMode::Gui => match gui::run() {
+            Err(error) => eprintln!("Failed to start GUI: {error}"),
+            _ => debug!("GUI exited successfully."),
+        },
+        AppMode::Cmd => run_cmd_mode(),
+    }
+}
+
+fn run_cmd_mode() {
     println!("Welcome to ffmpeg-cli!");
     println!("Installed ffmpeg version is: {}", get_ffmpeg_version());
     loop {
@@ -36,25 +60,24 @@ fn main() {
 }
 
 fn handle_menu_option(option: i32) {
-    let ffmpeg_command: Result<FfmpegCommand, Box<dyn Error>> = match option {
+    let ffmpeg_command: Result<FfmpegCommand> = match option {
         1 => transcoder::convert(),
         2 => transcoder::compress(),
         3 => transcoder::multi_task(),
         4 => transcoder::youtube_optimized(),
         0 => std::process::exit(0),
-        _ => Err(TranscoderError::UnsupportedOperation.into()),
+        _ => Err(anyhow!("Unsupported operation.")),
     };
 
     match ffmpeg_command {
         Ok(cmd) => run_cmd(&cmd),
-        Err(error) => eprintln!("{}", error),
+        Err(error) => eprintln!("{error:#}"),
     }
 }
 
-#[inline(always)]
 fn run_cmd(cmd: &FfmpegCommand) {
     match command_runner::run_command(cmd) {
         Ok(_) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),
-        Err(reason) => eprintln!("Failed to run the command. Reason: {}", reason),
+        Err(reason) => eprintln!("Failed to run the command. Reason: {reason:#}"),
     }
 }

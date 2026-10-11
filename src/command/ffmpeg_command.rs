@@ -1,13 +1,29 @@
 use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
 use crate::string_utils;
+use strum::{Display, VariantArray};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Display, VariantArray)]
 pub enum CommandType {
-    #[default]
-    Compress,
+    #[strum(to_string = "Convert format")]
     ConvertFormat,
-    YoutubeOptimized,
+    #[default]
+    #[strum(to_string = "Compress video")]
+    Compress,
+    #[strum(to_string = "Custom command")]
     MultiTask,
+    #[strum(to_string = "YouTube optimized")]
+    YoutubeOptimized,
+}
+
+impl CommandType {
+    pub fn output_suffix(self) -> &'static str {
+        match self {
+            Self::ConvertFormat => ".mp4",
+            Self::Compress => "_compressed.mp4",
+            Self::MultiTask => "_output.mp4",
+            Self::YoutubeOptimized => "_yt.mp4",
+        }
+    }
 }
 
 #[derive(Default, Debug, derive_builder::Builder)]
@@ -53,16 +69,16 @@ impl FfmpegCommand {
             }
             CommandType::MultiTask => {
                 if let Some(v) = &self.scale {
-                    cmd.push_str(format!(r#" -vf "scale={}-2""#, v).as_str());
+                    cmd.push_str(format!(r#" -vf "scale={v}-2""#).as_str());
                 }
                 if let Some(v) = &self.audio_bitrate {
-                    cmd.push_str(format!(" -b:a {}k", v).as_str());
+                    cmd.push_str(format!(" -b:a {v}k").as_str());
                 }
                 if let Some(v) = &self.preset {
-                    cmd.push_str(format!(" -preset {}", v).as_str());
+                    cmd.push_str(format!(" -preset {v}").as_str());
                 }
                 if let Some(v) = &self.crf {
-                    cmd.push_str(format!(" -crf {}", v).as_str());
+                    cmd.push_str(format!(" -crf {v}").as_str());
                 }
             }
         }
@@ -72,7 +88,7 @@ impl FfmpegCommand {
     }
 
     fn codecs_args(&self) -> String {
-        let mut cmd = String::from("");
+        let mut cmd = String::new();
         match self.command_type {
             CommandType::ConvertFormat => { /* skip additional params */ }
             _ => {
@@ -83,7 +99,7 @@ impl FfmpegCommand {
                 cmd.push_str(" -c:a ");
                 cmd.push_str(&audio_codec);
             }
-        };
+        }
         cmd
     }
 }
@@ -142,7 +158,7 @@ mod tests {
         assert_eq!(
             "ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -crf 23 -preset medium -b:a 320k -qscale 0 /ccc/ddd/output_video.mp4",
             cmd,
-        )
+        );
     }
 
     #[test]
@@ -164,7 +180,7 @@ mod tests {
         assert_eq!(
             r#"ffmpeg -i /aaa/bbb/input_video.avi -c:v libx264 -c:a aac -vf "scale=1280-2" -b:a 320k -preset medium -crf 24 /ccc/ddd/output_video.mp4"#,
             cmd,
-        )
+        );
     }
 
     #[test]
@@ -180,7 +196,7 @@ mod tests {
             .as_cmd_string();
 
         assert_eq!(
-            r#"ffmpeg -i /aaa/input_video.avi -c:v h264 -c:a aac /bbb/output_video.mp4"#,
+            r"ffmpeg -i /aaa/input_video.avi -c:v h264 -c:a aac /bbb/output_video.mp4",
             cmd,
         );
     }

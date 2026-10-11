@@ -46,14 +46,12 @@ pub fn get_codec(video_path: &str, codec_type: CodecType) -> String {
         CodecType::Video => "v:0",
     };
     let cmd = format!(
-        "ffprobe -v error -select_streams {} -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {}",
-        audio_or_video,
-        video_path
+        "ffprobe -v error -select_streams {audio_or_video} -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {video_path}"
     );
     let lines = crate::command_runner::execute_cmd_get_lines(&cmd);
     let result = lines.last();
     match result {
         Some(r) => r.to_owned(),
-        None => "".to_owned(),
+        None => String::new(),
     }
 }

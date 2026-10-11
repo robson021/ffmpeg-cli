@@ -1,21 +1,22 @@
+use anyhow::{bail, Result};
 use log::debug;
 
-pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String, &'static str> {
+pub fn change_file_extension(path: &str, new_extension: &str) -> Result<String> {
     let extension = find_file_extension(path)?;
     let new_path = path.replace(&extension, new_extension);
     Ok(new_path)
 }
 
-pub fn find_file_extension(path: &str) -> Result<String, &'static str> {
+pub fn find_file_extension(path: &str) -> Result<String> {
     match last_index_of_char(path, '.') {
         Some(idx) => {
             let ext = &path[idx..];
-            debug!("Found video with an extension: {}", ext);
+            debug!("Found video with an extension: {ext}");
             Ok(ext.to_owned())
         }
         None => {
-            debug!("Found no extension for the path: {}", path);
-            Err("No extension found.")
+            debug!("Found no extension for the path: {path}");
+            bail!("No extension found.")
         }
     }
 }
@@ -33,7 +34,6 @@ pub fn add_quotes_if_whitespace_present(input: &str, output: &str) -> (String, S
     (input, output)
 }
 
-#[inline(always)]
 fn wrap_with_quotes_if_whitespace(s: &str) -> String {
     if s.contains(' ') {
         let mut with_quotes = String::from("\"");
@@ -77,7 +77,7 @@ mod tests {
     fn should_clean_input_and_output_whitespaces() {
         let input = "/some/path with whitespaces/file name.mp4";
         let result = wrap_with_quotes_if_whitespace(input);
-        assert_eq!(result, format!("\"{}\"", input));
+        assert_eq!(result, format!("\"{input}\""));
 
         let input = "some/path/no_whitespace/file.mp4";
         let result = wrap_with_quotes_if_whitespace(input);

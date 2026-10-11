@@ -1,47 +1,71 @@
 use crate::command::ffmpeg_command::FfmpegCommand;
-use crate::error::ProcessFailure;
+use anyhow::{ensure, Context, Result};
 use log::debug;
 use std::collections::HashSet;
+use std::io::{BufRead, BufReader};
 use std::process::Command;
 use std::time::Instant;
 
-pub fn run_command(command: &FfmpegCommand) -> Result<(), ProcessFailure> {
+pub enum RunEvent {
+    Output(String),
+    Finished(Result<(), String>),
+}
+
+pub fn run_command(command: &FfmpegCommand) -> Result<()> {
     let command = command.as_cmd_string();
-    println!("Running command: {:?}", command);
+    println!("Running command: {command:?}");
 
     let start = Instant::now();
-    let status_code = execute_and_wait(command)?;
-    if status_code != 0 {
-        return Err(ProcessFailure::CommandExecution(status_code));
-    };
+    let (program, arg) = get_system_specific_program_and_arg();
+    let status = Command::new(program)
+        .arg(arg)
+        .arg(&command)
+        .status()
+        .context("Failed to spawn process.")?;
+    ensure!(status.success(), "Failed to execute command. {status}.");
     let time = start.elapsed().as_secs();
-    println!("Task executed successfully! Time elapsed: {}s", time);
+    println!("Task executed successfully! Time elapsed: {time}s");
     Ok(())
 }
 
-#[inline]
+pub fn run_command_with_output(command: &FfmpegCommand, on_line: &dyn Fn(String)) -> Result<()> {
+    let command = command.as_cmd_string();
+    on_line(format!("$ {command}"));
+
+    let (program, arg) = get_system_specific_program_and_arg();
+    let reader = duct::cmd(program, [arg, command.as_str()])
+        .stdin_null()
+        .stderr_to_stdout()
+        .unchecked()
+        .reader()
+        .context("Failed to spawn process.")?;
+
+    for chunk in BufReader::new(&reader).split(b'\r') {
+        let chunk = chunk.context("Failed to read process output.")?;
+        String::from_utf8_lossy(&chunk)
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .for_each(|line| on_line(line.to_owned()));
+    }
+
+    let output = reader
+        .try_wait()
+        .context("Failed to await process.")?
+        .context("The process has not finished.")?;
+    ensure!(
+        output.status.success(),
+        "Failed to execute command. {}.",
+        output.status
+    );
+    Ok(())
+}
+
 fn get_system_specific_program_and_arg() -> (&'static str, &'static str) {
     if cfg!(target_os = "windows") {
         ("cmd", "/C")
     } else {
         ("sh", "-c")
     }
-}
-
-fn execute_and_wait(command: String) -> Result<i32, ProcessFailure> {
-    let program_arg = get_system_specific_program_and_arg();
-    let cmd = Command::new(program_arg.0)
-        .arg(program_arg.1)
-        .arg(command)
-        .spawn();
-    if cmd.is_err() {
-        return Err(ProcessFailure::Spawn);
-    }
-    let cmd = cmd.unwrap().wait();
-    if cmd.is_err() {
-        return Err(ProcessFailure::Await);
-    }
-    Ok(cmd.unwrap().code().unwrap())
 }
 
 pub fn get_supported_formats() -> HashSet<String> {
@@ -61,7 +85,7 @@ pub fn get_supported_formats() -> HashSet<String> {
             continue;
         }
         let line = line[1];
-        formats.push(line.to_owned())
+        formats.push(line.to_owned());
     }
     let set: HashSet<String> = formats.into_iter().collect();
     debug!("Found: {} supported formats", set.len());
@@ -78,7 +102,7 @@ pub fn execute_cmd_get_lines(cmd: &str) -> Vec<String> {
 
     let std_out = String::from_utf8_lossy(&output.stdout);
     let lines = std_out.lines().collect::<Vec<&str>>();
-    lines.into_iter().map(|line| line.to_owned()).collect()
+    lines.into_iter().map(ToOwned::to_owned).collect()
 }
 
 pub fn get_ffmpeg_version() -> String {
