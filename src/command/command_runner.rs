@@ -6,6 +6,11 @@ use std::io::{BufRead, BufReader};
 use std::process::Command;
 use std::time::Instant;
 
+pub enum RunEvent {
+    Output(String),
+    Finished(Result<(), String>),
+}
+
 pub fn run_command(command: &FfmpegCommand) -> Result<()> {
     let command = command.as_cmd_string();
     println!("Running command: {command:?}");

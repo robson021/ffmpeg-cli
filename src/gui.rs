@@ -1,80 +1,28 @@
-use crate::command::command_runner;
-use crate::command::ffmpeg_command::{self, CommandType, FfmpegCommand};
-use crate::media::codecs::{AudioCodec, VideoCodec};
+use crate::command::command_form::{CommandForm, FormField};
+use crate::command::command_runner::RunEvent;
+use crate::command::ffmpeg_command::CommandType;
 use iced::widget::{button, column, container, pick_list, row, scrollable, text, text_input};
 use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, TryRecvError};
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::Duration;
 
 const CUSTOM_FIELDS_HEIGHT: f32 = 232.0;
 const MIN_WINDOW_HEIGHT: f32 = 400.0;
 const MAX_LOG_LINES: usize = 500;
 
-enum RunEvent {
-    Output(String),
-    Finished(Result<(), String>),
-}
-
 fn log_id() -> iced::widget::Id {
     iced::widget::Id::new("ffmpeg-log")
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Operation {
-    ConvertFormat,
-    Compress,
-    MultiTask,
-    YoutubeOptimized,
-}
-
-impl Operation {
-    const ALL: [Self; 4] = [
-        Self::ConvertFormat,
-        Self::Compress,
-        Self::MultiTask,
-        Self::YoutubeOptimized,
-    ];
-
-    fn command_type(self) -> CommandType {
-        match self {
-            Self::ConvertFormat => CommandType::ConvertFormat,
-            Self::Compress => CommandType::Compress,
-            Self::MultiTask => CommandType::MultiTask,
-            Self::YoutubeOptimized => CommandType::YoutubeOptimized,
-        }
-    }
-}
-
-impl std::fmt::Display for Operation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::ConvertFormat => "Convert format",
-            Self::Compress => "Compress video",
-            Self::MultiTask => "Custom command",
-            Self::YoutubeOptimized => "YouTube optimized",
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Field {
-    VideoCodec,
-    AudioCodec,
-    Scale,
-    Bitrate,
-    Preset,
-    Crf,
-}
-
 #[derive(Debug, Clone)]
 enum Message {
-    OperationChanged(Operation),
+    OperationChanged(CommandType),
     InputChanged(String),
     BrowseInput,
     InputPicked(Option<String>),
     OutputChanged(String),
-    FieldChanged(Field, String),
+    FieldChanged(FormField, String),
     Run,
     PollCommand,
     OpenOutputDir,
@@ -82,15 +30,7 @@ enum Message {
 
 #[derive(Default)]
 struct App {
-    operation: Option<Operation>,
-    input: String,
-    output: String,
-    video_codec: String,
-    audio_codec: String,
-    scale: String,
-    bitrate: String,
-    preset: String,
-    crf: String,
+    form: CommandForm,
     preview: String,
     status: String,
     log: Vec<String>,
@@ -100,34 +40,26 @@ struct App {
 
 impl App {
     fn new() -> Self {
-        Self {
-            operation: Some(Operation::YoutubeOptimized),
-            ..Self::default()
-        }
+        Self::default()
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::OperationChanged(operation) => {
-                let was_custom = self.operation == Some(Operation::MultiTask);
-                self.operation = Some(operation);
-                self.output = suggest_output(&self.input, operation);
+                let was_custom = self.form.is_custom();
+                self.form.set_operation(operation);
                 self.refresh_preview();
-                let is_custom = operation == Operation::MultiTask;
-                if was_custom != is_custom {
-                    let delta = if is_custom {
-                        CUSTOM_FIELDS_HEIGHT
-                    } else {
+                if was_custom != self.form.is_custom() {
+                    let delta = if was_custom {
                         -CUSTOM_FIELDS_HEIGHT
+                    } else {
+                        CUSTOM_FIELDS_HEIGHT
                     };
                     return resize_window_height(delta);
                 }
             }
             Message::InputChanged(input) => {
-                self.input = input;
-                if let Some(operation) = self.operation {
-                    self.output = suggest_output(&self.input, operation);
-                }
+                self.form.set_input(input);
                 self.refresh_preview();
             }
             Message::BrowseInput => {
@@ -138,18 +70,11 @@ impl App {
             }
             Message::InputPicked(None) => {}
             Message::OutputChanged(output) => {
-                self.output = output;
+                self.form.output = output;
                 self.refresh_preview();
             }
             Message::FieldChanged(field, value) => {
-                match field {
-                    Field::VideoCodec => self.video_codec = value,
-                    Field::AudioCodec => self.audio_codec = value,
-                    Field::Scale => self.scale = value,
-                    Field::Bitrate => self.bitrate = value,
-                    Field::Preset => self.preset = value,
-                    Field::Crf => self.crf = value,
-                }
+                self.form.set_field(field, value);
                 self.refresh_preview();
             }
             Message::Run => self.start_command(),
@@ -166,9 +91,13 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let operation = pick_list(Operation::ALL, self.operation, Message::OperationChanged)
-            .placeholder("Choose an operation")
-            .width(Length::Fill);
+        let operation = pick_list(
+            CommandType::ALL,
+            self.form.operation,
+            Message::OperationChanged,
+        )
+        .placeholder("Choose an operation")
+        .width(Length::Fill);
 
         let mut content = column![
             text("FFmpeg CLI").size(30),
@@ -178,7 +107,7 @@ impl App {
                 .align_y(Alignment::Center),
             row![
                 text("Input file").width(120),
-                text_input("Path to a video file", &self.input)
+                text_input("Path to a video file", &self.form.input)
                     .on_input(Message::InputChanged)
                     .padding(10)
                     .width(Length::Fill),
@@ -188,7 +117,7 @@ impl App {
             .align_y(Alignment::Center),
             labeled_input(
                 "Output file",
-                &self.output,
+                &self.form.output,
                 "Output path",
                 Message::OutputChanged
             ),
@@ -196,36 +125,38 @@ impl App {
         .spacing(16)
         .width(Length::Fill);
 
-        if self.operation == Some(Operation::MultiTask) {
+        if self.form.is_custom() {
             content = content
                 .push(labeled_input(
                     "Video codec",
-                    &self.video_codec,
+                    &self.form.video_codec,
                     "e.g. libx264",
-                    |value| Message::FieldChanged(Field::VideoCodec, value),
+                    |value| Message::FieldChanged(FormField::VideoCodec, value),
                 ))
                 .push(labeled_input(
                     "Audio codec",
-                    &self.audio_codec,
+                    &self.form.audio_codec,
                     "e.g. aac",
-                    |value| Message::FieldChanged(Field::AudioCodec, value),
+                    |value| Message::FieldChanged(FormField::AudioCodec, value),
                 ))
                 .push(row![
-                    labeled_input("Scale", &self.scale, "e.g. 1280", |value| {
-                        Message::FieldChanged(Field::Scale, value)
+                    labeled_input("Scale", &self.form.scale, "e.g. 1280", |value| {
+                        Message::FieldChanged(FormField::Scale, value)
                     }),
-                    labeled_input("Audio bitrate", &self.bitrate, "e.g. 320 kbps", |value| {
-                        Message::FieldChanged(Field::Bitrate, value)
-                    }),
+                    labeled_input(
+                        "Audio bitrate",
+                        &self.form.bitrate,
+                        "e.g. 320 kbps",
+                        |value| { Message::FieldChanged(FormField::Bitrate, value) }
+                    ),
                 ])
                 .push(row![
-                    labeled_input("Preset", &self.preset, "e.g. medium", |value| {
-                        Message::FieldChanged(Field::Preset, value)
+                    labeled_input("Preset", &self.form.preset, "e.g. medium", |value| {
+                        Message::FieldChanged(FormField::Preset, value)
                     }),
-                    labeled_input("CRF", &self.crf, "e.g. 24", |value| Message::FieldChanged(
-                        Field::Crf,
-                        value
-                    )),
+                    labeled_input("CRF", &self.form.crf, "e.g. 24", |value| {
+                        Message::FieldChanged(FormField::Crf, value)
+                    }),
                 ]);
         }
 
@@ -257,10 +188,6 @@ impl App {
                 .center_x(Length::Fill),
             );
 
-        if !self.status.is_empty() {
-            content = content.push(text(&self.status));
-        }
-
         content = content.push(text("Logs output:").size(20)).push(
             container(
                 scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(13))
@@ -272,6 +199,15 @@ impl App {
             .width(Length::Fill)
             .style(container::bordered_box),
         );
+
+        if !self.status.is_empty() {
+            content = content.push(
+                container(text(&self.status))
+                    .padding(12)
+                    .width(Length::Fill)
+                    .style(container::bordered_box),
+            );
+        }
 
         if self.finished_output_dir.is_some() {
             content = content.push(
@@ -324,7 +260,7 @@ impl App {
             match result {
                 Ok(()) => {
                     self.status = "FFmpeg completed successfully.".to_owned();
-                    self.finished_output_dir = Some(output_directory(&self.output));
+                    self.finished_output_dir = Some(self.form.output_directory());
                     notify_done();
                 }
                 Err(error) => self.status = format!("FFmpeg failed: {error}"),
@@ -334,83 +270,22 @@ impl App {
     }
 
     fn refresh_preview(&mut self) {
-        self.preview = self
-            .build_command()
-            .map(|command| command.as_cmd_string())
-            .unwrap_or_default();
-    }
-
-    fn build_command(&self) -> Result<FfmpegCommand, String> {
-        let operation = self
-            .operation
-            .ok_or_else(|| "Choose an operation.".to_owned())?;
-        if self.input.trim().is_empty() || self.output.trim().is_empty() {
-            return Err("Provide both input and output paths.".to_owned());
-        }
-
-        let mut builder = ffmpeg_command::builder();
-        builder
-            .command_type(operation.command_type())
-            .input_file(self.input.trim())
-            .output_file(self.output.trim())
-            .video_codec(VideoCodec::Custom(if self.video_codec.is_empty() {
-                "libx264".to_owned()
-            } else {
-                self.video_codec.trim().to_owned()
-            }))
-            .audio_codec(AudioCodec::Custom(if self.audio_codec.is_empty() {
-                "aac".to_owned()
-            } else {
-                self.audio_codec.trim().to_owned()
-            }));
-
-        if operation == Operation::MultiTask {
-            builder
-                .scale(parse_optional(&self.scale, "scale")?)
-                .audio_bitrate(parse_optional(&self.bitrate, "audio bitrate")?)
-                .preset(if self.preset.trim().is_empty() {
-                    None
-                } else {
-                    Some(self.preset.trim().to_owned())
-                })
-                .crf(parse_optional(&self.crf, "CRF")?);
-        }
-
-        builder.build().map_err(|error| error.to_string())
+        self.preview = self.form.preview();
     }
 
     fn start_command(&mut self) {
         if self.result_receiver.is_some() {
             return;
         }
-        let command = match self.build_command() {
-            Ok(command) => command,
-            Err(error) => {
-                self.status = error;
-                return;
+        match self.form.start() {
+            Ok(receiver) => {
+                self.status = "Running FFmpeg...".to_owned();
+                self.log.clear();
+                self.finished_output_dir = None;
+                self.result_receiver = Some(receiver);
             }
-        };
-        if !Path::new(&self.input).is_file() {
-            self.status = format!("Input file does not exist: {}", self.input);
-            return;
+            Err(error) => self.status = error,
         }
-        if self.input == self.output {
-            self.status = "Input and output files must be different.".to_owned();
-            return;
-        }
-
-        self.status = "Running FFmpeg...".to_owned();
-        self.log.clear();
-        self.finished_output_dir = None;
-        let (sender, receiver) = mpsc::channel();
-        self.result_receiver = Some(receiver);
-        std::thread::spawn(move || {
-            let result = command_runner::run_command_with_output(&command, &|line| {
-                let _ = sender.send(RunEvent::Output(line));
-            })
-            .map_err(|error| format!("{error:#}"));
-            let _ = sender.send(RunEvent::Finished(result));
-        });
     }
 }
 
@@ -474,37 +349,6 @@ fn notify_done() {
             log::warn!("Could not show system notification: {error}");
         }
     });
-}
-
-fn output_directory(output: &str) -> PathBuf {
-    match Path::new(output.trim()).parent() {
-        Some(dir) if !dir.as_os_str().is_empty() => dir.to_path_buf(),
-        _ => PathBuf::from("."),
-    }
-}
-
-fn parse_optional(value: &str, name: &str) -> Result<Option<i16>, String> {
-    if value.trim().is_empty() {
-        return Ok(None);
-    }
-    value
-        .trim()
-        .parse::<i16>()
-        .map(Some)
-        .map_err(|_| format!("{name} must be a number between -32768 and 32767."))
-}
-
-fn suggest_output(input: &str, operation: Operation) -> String {
-    if input.trim().is_empty() {
-        return String::new();
-    }
-    let suffix = match operation {
-        Operation::ConvertFormat => ".mp4",
-        Operation::Compress => "_compressed.mp4",
-        Operation::MultiTask => "_output.mp4",
-        Operation::YoutubeOptimized => "_yt.mp4",
-    };
-    crate::string_utils::change_file_extension(input, suffix).unwrap_or_default()
 }
 
 pub fn run() -> iced::Result {

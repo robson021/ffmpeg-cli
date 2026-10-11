@@ -1,13 +1,44 @@
 use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
 use crate::string_utils;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CommandType {
     #[default]
     Compress,
     ConvertFormat,
     YoutubeOptimized,
     MultiTask,
+}
+
+impl CommandType {
+    pub const ALL: [Self; 4] = [
+        Self::ConvertFormat,
+        Self::Compress,
+        Self::MultiTask,
+        Self::YoutubeOptimized,
+    ];
+}
+
+impl CommandType {
+    pub fn output_suffix(self) -> &'static str {
+        match self {
+            Self::ConvertFormat => ".mp4",
+            Self::Compress => "_compressed.mp4",
+            Self::MultiTask => "_output.mp4",
+            Self::YoutubeOptimized => "_yt.mp4",
+        }
+    }
+}
+
+impl std::fmt::Display for CommandType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::ConvertFormat => "Convert format",
+            Self::Compress => "Compress video",
+            Self::MultiTask => "Custom command",
+            Self::YoutubeOptimized => "YouTube optimized",
+        })
+    }
 }
 
 #[derive(Default, Debug, derive_builder::Builder)]
