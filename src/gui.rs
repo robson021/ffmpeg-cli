@@ -6,6 +6,7 @@ use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::{Duration, Instant};
+use strum::VariantArray;
 
 const CUSTOM_FIELDS_HEIGHT: f32 = 232.0;
 const MIN_WINDOW_HEIGHT: f32 = 400.0;
@@ -103,7 +104,7 @@ impl App {
 
     fn view(&self) -> Element<'_, Message> {
         let operation = pick_list(
-            CommandType::ALL,
+            CommandType::VARIANTS,
             self.form.operation,
             Message::OperationChanged,
         )
@@ -181,7 +182,7 @@ impl App {
                 }))
                 .padding(12)
                 .width(Length::Fill)
-                .style(input_like_box),
+                .style(container::bordered_box),
             )
             .push(
                 container(
@@ -348,16 +349,6 @@ fn resize_window_height(delta: f32) -> Task<Message> {
             iced::window::resize(id, iced::Size::new(size.width, height))
         })
     })
-}
-
-fn input_like_box(theme: &Theme) -> container::Style {
-    let weak = theme.extended_palette().background.weak;
-    container::Style {
-        background: Some(weak.color.into()),
-        text_color: Some(weak.text),
-        border: iced::border::rounded(2),
-        ..container::Style::default()
-    }
 }
 
 fn status_box(theme: &Theme, succeeded: bool, blinking: bool) -> container::Style {

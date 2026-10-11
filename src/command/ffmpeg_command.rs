@@ -1,22 +1,18 @@
 use crate::media::codecs::{AudioCodec, CodecAsString, VideoCodec};
 use crate::string_utils;
+use strum::{Display, VariantArray};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Display, VariantArray)]
 pub enum CommandType {
-    #[default]
-    Compress,
+    #[strum(to_string = "Convert format")]
     ConvertFormat,
-    YoutubeOptimized,
+    #[default]
+    #[strum(to_string = "Compress video")]
+    Compress,
+    #[strum(to_string = "Custom command")]
     MultiTask,
-}
-
-impl CommandType {
-    pub const ALL: [Self; 4] = [
-        Self::ConvertFormat,
-        Self::Compress,
-        Self::MultiTask,
-        Self::YoutubeOptimized,
-    ];
+    #[strum(to_string = "YouTube optimized")]
+    YoutubeOptimized,
 }
 
 impl CommandType {
@@ -27,17 +23,6 @@ impl CommandType {
             Self::MultiTask => "_output.mp4",
             Self::YoutubeOptimized => "_yt.mp4",
         }
-    }
-}
-
-impl std::fmt::Display for CommandType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::ConvertFormat => "Convert format",
-            Self::Compress => "Compress video",
-            Self::MultiTask => "Custom command",
-            Self::YoutubeOptimized => "YouTube optimized",
-        })
     }
 }
 
