@@ -22,7 +22,6 @@ pub fn ask_input_and_output_file() -> Result<(String, String, String), Box<dyn E
     Ok((input, output, format))
 }
 
-#[inline]
 pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
     println!("Provide video path (e.g. /some/directory/video.mp4):");
     let path = read_input();
@@ -39,7 +38,6 @@ pub fn ask_input_file() -> Result<String, Box<dyn Error>> {
     file
 }
 
-#[inline]
 fn ask_output_format() -> Result<String, &'static str> {
     println!("Provide output format (e.g. mp4):");
     let format = read_input();

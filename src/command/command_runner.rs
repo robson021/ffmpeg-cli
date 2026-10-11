@@ -55,7 +55,6 @@ pub fn run_command_with_output(
     }
 }
 
-#[inline]
 fn get_system_specific_program_and_arg() -> (&'static str, &'static str) {
     if cfg!(target_os = "windows") {
         ("cmd", "/C")

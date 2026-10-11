@@ -59,7 +59,6 @@ fn handle_menu_option(option: i32) {
     }
 }
 
-#[inline(always)]
 fn run_cmd(cmd: &FfmpegCommand) {
     match command_runner::run_command(cmd) {
         Ok(_) => debug!("Successfully executed command: {}.", cmd.as_cmd_string()),

@@ -33,7 +33,6 @@ pub fn add_quotes_if_whitespace_present(input: &str, output: &str) -> (String, S
     (input, output)
 }
 
-#[inline(always)]
 fn wrap_with_quotes_if_whitespace(s: &str) -> String {
     if s.contains(' ') {
         let mut with_quotes = String::from("\"");

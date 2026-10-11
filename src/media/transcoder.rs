@@ -144,7 +144,6 @@ pub fn multi_task() -> Result<FfmpegCommand, Box<dyn Error>> {
     unwrap_ffmpeg_command(cmd.build())
 }
 
-#[inline(always)]
 fn unwrap_ffmpeg_command(
     cmd: Result<FfmpegCommand, FfmpegCommandBuilderError>,
 ) -> Result<FfmpegCommand, Box<dyn Error>> {
