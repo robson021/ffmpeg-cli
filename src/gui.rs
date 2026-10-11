@@ -5,10 +5,11 @@ use iced::widget::{button, column, container, pick_list, row, scrollable, text, 
 use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const CUSTOM_FIELDS_HEIGHT: f32 = 232.0;
 const MIN_WINDOW_HEIGHT: f32 = 400.0;
+const BLINK_DURATION: Duration = Duration::from_millis(700);
 const MAX_LOG_LINES: usize = 500;
 
 fn log_id() -> iced::widget::Id {
@@ -25,6 +26,7 @@ enum Message {
     FieldChanged(FormField, String),
     Run,
     PollCommand,
+    BlinkTick,
     OpenOutputDir,
 }
 
@@ -33,6 +35,7 @@ struct App {
     form: CommandForm,
     preview: String,
     status: String,
+    blink_until: Option<Instant>,
     log: Vec<String>,
     finished_output_dir: Option<PathBuf>,
     result_receiver: Option<Receiver<RunEvent>>,
@@ -79,6 +82,14 @@ impl App {
             }
             Message::Run => self.start_command(),
             Message::PollCommand => return self.poll_command(),
+            Message::BlinkTick => {
+                if self
+                    .blink_until
+                    .is_some_and(|until| Instant::now() >= until)
+                {
+                    self.blink_until = None;
+                }
+            }
             Message::OpenOutputDir => {
                 if let Some(dir) = &self.finished_output_dir {
                     if let Err(error) = open::that(dir) {
@@ -201,11 +212,13 @@ impl App {
         );
 
         if !self.status.is_empty() {
+            let succeeded = self.finished_output_dir.is_some();
+            let blinking = self.blink_until.is_some();
             content = content.push(
                 container(text(&self.status))
                     .padding(12)
                     .width(Length::Fill)
-                    .style(container::bordered_box),
+                    .style(move |theme: &Theme| status_box(theme, succeeded, blinking)),
             );
         }
 
@@ -227,11 +240,17 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if self.result_receiver.is_some() {
+        let poll = if self.result_receiver.is_some() {
             iced::time::every(Duration::from_millis(150)).map(|_| Message::PollCommand)
         } else {
             Subscription::none()
-        }
+        };
+        let blink = if self.blink_until.is_some() {
+            iced::time::every(Duration::from_millis(50)).map(|_| Message::BlinkTick)
+        } else {
+            Subscription::none()
+        };
+        Subscription::batch([poll, blink])
     }
 
     fn poll_command(&mut self) -> Task<Message> {
@@ -261,6 +280,7 @@ impl App {
                 Ok(()) => {
                     self.status = "FFmpeg completed successfully.".to_owned();
                     self.finished_output_dir = Some(self.form.output_directory());
+                    self.blink_until = Some(Instant::now() + BLINK_DURATION);
                     notify_done();
                 }
                 Err(error) => self.status = format!("FFmpeg failed: {error}"),
@@ -282,6 +302,7 @@ impl App {
                 self.status = "Running FFmpeg...".to_owned();
                 self.log.clear();
                 self.finished_output_dir = None;
+                self.blink_until = None;
                 self.result_receiver = Some(receiver);
             }
             Err(error) => self.status = error,
@@ -337,6 +358,19 @@ fn input_like_box(theme: &Theme) -> container::Style {
         border: iced::border::rounded(2),
         ..container::Style::default()
     }
+}
+
+fn status_box(theme: &Theme, succeeded: bool, blinking: bool) -> container::Style {
+    let mut style = container::bordered_box(theme);
+    if succeeded {
+        let success = theme.extended_palette().success.strong;
+        style.border = style.border.color(success.color).width(2);
+        if blinking {
+            style.background = Some(success.color.into());
+            style.text_color = Some(success.text);
+        }
+    }
+    style
 }
 
 fn notify_done() {

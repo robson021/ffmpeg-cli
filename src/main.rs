@@ -13,23 +13,41 @@ mod string_utils;
 mod user_input;
 
 fn print_menu() {
-    println!("\nChose an option:");
+    println!("\nChoose an option:");
     println!("1. Convert format (e.g. avi -> mp4).");
     println!("2. Compress video.");
     println!("3. Complex command.");
-    println!("4. Convert into Youtube optimized format.");
+    println!("4. Convert into YouTube optimized format.");
     println!("0. Exit program.");
+}
+
+enum AppMode {
+    Cmd,
+    Gui,
+}
+
+impl AppMode {
+    fn from_args() -> Self {
+        if std::env::args().any(|arg| arg == "--cmd") {
+            Self::Cmd
+        } else {
+            Self::Gui
+        }
+    }
 }
 
 fn main() {
     logger_config::setup_logger();
-    if std::env::args().any(|arg| arg == "--gui") {
-        if let Err(error) = gui::run() {
-            eprintln!("Failed to start GUI: {error}");
-        }
-        return;
+    match AppMode::from_args() {
+        AppMode::Gui => match gui::run() {
+            Err(error) => eprintln!("Failed to start GUI: {error}"),
+            _ => debug!("GUI exited successfully."),
+        },
+        AppMode::Cmd => run_cmd_mode(),
     }
+}
 
+fn run_cmd_mode() {
     println!("Welcome to ffmpeg-cli!");
     println!("Installed ffmpeg version is: {}", get_ffmpeg_version());
     loop {
