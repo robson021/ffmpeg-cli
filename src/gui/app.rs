@@ -1,3 +1,5 @@
+use super::constants::*;
+use super::system::{notify_done, pick_file};
 use crate::command::command_form::{CommandForm, FormField};
 use crate::command::command_runner::RunEvent;
 use crate::command::ffmpeg_command::CommandType;
@@ -5,30 +7,9 @@ use iced::widget::{button, column, container, pick_list, row, scrollable, text, 
 use iced::{Alignment, Element, Font, Length, Subscription, Task, Theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, TryRecvError};
-use std::time::{Duration, Instant};
+use std::sync::LazyLock;
+use std::time::Instant;
 use strum::VariantArray;
-
-const CUSTOM_FIELDS_HEIGHT: f32 = 232.0;
-const MIN_WINDOW_HEIGHT: f32 = 400.0;
-const BLINK_DURATION: Duration = Duration::from_millis(700);
-const MAX_LOG_LINES: usize = 500;
-const LABEL_SIZE: u32 = 20;
-const LABEL_WIDTH: f32 = 120.0;
-const INPUT_PADDING: f32 = 10.0;
-const ROW_SPACING: f32 = 12.0;
-const BOX_PADDING: f32 = ROW_SPACING;
-const SECTION_SPACING: f32 = 16.0;
-const CONTENT_PADDING: f32 = 24.0;
-const LOG_HEIGHT: f32 = 260.0;
-const LOG_FONT_SIZE: u32 = 13;
-const POLL_INTERVAL: Duration = Duration::from_millis(150);
-const BLINK_TICK_INTERVAL: Duration = Duration::from_millis(50);
-const WINDOW_WIDTH: f32 = 1000.0;
-const WINDOW_HEIGHT: f32 = 800.0;
-
-fn log_id() -> iced::widget::Id {
-    iced::widget::Id::new("ffmpeg-log")
-}
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -215,9 +196,13 @@ impl App {
 
         content = content.push(text("Logs output:").size(LABEL_SIZE)).push(
             container(
-                scrollable(text(self.log.join("\n")).font(Font::MONOSPACE).size(LOG_FONT_SIZE))
-                    .id(log_id())
-                    .width(Length::Fill),
+                scrollable(
+                    text(self.log.join("\n"))
+                        .font(Font::MONOSPACE)
+                        .size(LOG_FONT_SIZE),
+                )
+                .id(LOG_ID.clone())
+                .width(Length::Fill),
             )
             .padding(BOX_PADDING)
             .height(LOG_HEIGHT)
@@ -300,7 +285,7 @@ impl App {
                 Err(error) => self.status = format!("FFmpeg failed: {error}"),
             }
         }
-        iced::widget::operation::snap_to_end(log_id())
+        iced::widget::operation::snap_to_end(LOG_ID.clone())
     }
 
     fn refresh_preview(&mut self) {
@@ -342,19 +327,6 @@ fn labeled_input<'a>(
     .into()
 }
 
-async fn pick_file() -> Option<String> {
-    rfd::AsyncFileDialog::new()
-        .set_title("Select a video file")
-        .add_filter(
-            "Video",
-            &["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv", "m4v"],
-        )
-        .add_filter("All files", &["*"])
-        .pick_file()
-        .await
-        .map(|file| file.path().to_string_lossy().into_owned())
-}
-
 fn resize_window_height(delta: f32) -> Task<Message> {
     iced::window::latest().and_then(move |id| {
         iced::window::size(id).then(move |size| {
@@ -377,19 +349,8 @@ fn status_box(theme: &Theme, succeeded: bool, blinking: bool) -> container::Styl
     style
 }
 
-fn notify_done() {
-    std::thread::spawn(|| {
-        if let Err(error) = notify_rust::Notification::new()
-            .summary("Done!")
-            .body("FFmpeg finished successfully.")
-            .show()
-        {
-            log::warn!("Could not show system notification: {error}");
-        }
-    });
-}
-
 pub fn run() -> iced::Result {
+    LazyLock::force(&LOG_ID);
     iced::application(App::new, App::update, App::view)
         .title("FFmpeg CLI")
         .theme(|_: &App| Theme::Dark)
