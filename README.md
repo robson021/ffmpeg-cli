@@ -1,4 +1,4 @@
-## CLI tool for ffmpeg
+## GUI and CLI tool for ffmpeg
 
 [![CI](https://github.com/robson021/ffmpeg-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/robson021/ffmpeg-cli/actions/workflows/ci.yml)
 
